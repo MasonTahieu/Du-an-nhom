@@ -35,7 +35,11 @@ async def local_writes(request: Request, call_next):
         from urllib.parse import urlparse
         if origin and urlparse(origin).hostname not in {"127.0.0.1", "localhost", "testserver"}:
             return __import__("fastapi").responses.JSONResponse(status_code=403, content={"detail": "Chỉ cho phép nạp từ giao diện local."})
-    return await call_next(request)
+    response = await call_next(request)
+    # Avoid stale forms after file-overlay updates on local Windows browsers.
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -138,3 +142,50 @@ def load_ticker(ticker: str, body: LoadBody):
 @app.get("/api/load-status")
 def load_status():
     return {"job": _LOAD_JOBS.current()}
+
+# Only explicit local user action can save valuation inputs. Analysis and PDF are read-only.
+class ValuationBody(BaseModel):
+    method: str
+    basis: str
+    per_share: float
+    multiple: float
+    as_of: str
+    source_url: str
+    reviewed: bool = False
+    note: str = ""
+
+
+def _prepare_valuation(ticker: str, body: ValuationBody):
+    from .valuation_engine import validate_input, latest_price
+    from .analysis import valuation
+    from datetime import datetime, timezone
+    store = Store("local")
+    ticker = symbol(ticker)
+    payload = validate_input(body.model_dump())
+    px = latest_price(store.read("prices.parquet"), ticker)
+    if px:
+        payload["reference_price"] = px["price"]
+        payload["price_date"] = px["date"]
+        payload["price_basis"] = px["price_basis"]
+    payload["reviewed_at"] = datetime.now(timezone.utc).isoformat()
+    result = valuation(payload, px["price"] if px else None)
+    return store, ticker, payload, result
+
+
+@app.post("/api/valuation-preview/{ticker}")
+def preview_valuation(ticker: str, body: ValuationBody):
+    _, _, _, result = _prepare_valuation(ticker, body)
+    return result
+
+
+@app.post("/api/valuation/{ticker}")
+def save_valuation(ticker: str, body: ValuationBody):
+    store, ticker, payload, result = _prepare_valuation(ticker, body)
+    data = store.read_json("valuations.json", {})
+    if not isinstance(data, dict):
+        raise ValueError("Dữ liệu định giá hiện tại không hợp lệ; không thể ghi đè.")
+    data[ticker] = payload
+    store.write_json("valuations.json", data, {
+        "source": "Giả định người dùng xác nhận qua giao diện", "source_url": "see valuation row",
+        "as_of": payload["as_of"], "note": "Không suy ra EPS/BVPS dự phóng hoặc multiple từ RSS."})
+    return {"symbol": ticker, "message": "Đã lưu giả định định giá vào bộ local.", "valuation": result}

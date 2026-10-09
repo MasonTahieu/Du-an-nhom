@@ -28,6 +28,7 @@ SECTOR_TERMS = {
     "energy": ("dien luc", "dien gio", "dien mat troi", "thuy dien", "nhiet dien"),
     "oil_gas": ("dau khi", "gia dau", "khai thac dau", "lng"),
     "securities": ("cong ty chung khoan", "moi gioi chung khoan", "cho vay margin", "tu doanh", "chung khoan"),
+    "telecom": ("vien thong", "mang di dong", "internet bang rong", "ha tang vien thong", "thue bao di dong", "4g", "5g"),
 }
 MACRO_TERMS = ("gdp", "cpi", "lam phat", "tang truong kinh te", "ngan sach nha nuoc", "dau tu cong", "fdi", "xuat nhap khau", "ty gia", "chinh sach tien te", "lai suat dieu hanh")
 TOPIC_TERMS = {
@@ -58,6 +59,8 @@ KNOWN_ALIASES = {
     "MWG": ("the gioi di dong", "bach hoa xanh"),
     "VHM": ("vinhomes",),
     "VIC": ("vingroup",),
+    "VGI": ("viettel global", "tong cong ty co phan dau tu quoc te viettel"),
+    "FOX": ("fpt telecom", "cong ty co phan vien thong fpt"),
 }
 
 

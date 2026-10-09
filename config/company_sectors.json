@@ -43,6 +43,11 @@
     "STB": "bank",
     "LPB": "bank",
     "VPB": "bank",
-    "MSB": "bank"
+    "MSB": "bank",
+    "VGI": "telecom",
+    "FOX": "telecom",
+    "MFS": "telecom",
+    "TTN": "telecom",
+    "CTR": "telecom"
   }
 }

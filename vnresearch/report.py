@@ -122,10 +122,15 @@ def _build_pdf(data, output):
         story.append(t)
         story.append(Spacer(1, .18*cm))
     def chapter(number, name):
-        if number > 1:
+        # Major analytical parts have page starts; compact supplementary sections
+        # flow naturally to avoid pages with little content.
+        if number in (2, 3, 4, 6):
             story.append(PageBreak())
+        elif number > 1:
+            story.append(Spacer(1, .4*cm))
         add(f"0{number} / {name.upper()}", h1)
     review = data.get("review")
+    research = data.get("research", {})
     m, sector, latest = data["market"], data["sector"], data["financials"][-1] if data["financials"] else {}
     chapter(1, "Tổng quan đầu tư")
     add(data["symbol"], title)
@@ -133,15 +138,16 @@ def _build_pdf(data, output):
     add(sector["label"] + "  |  " + ("Bộ dữ liệu demo cố định" if data["mode"] == "sample" else "Dữ liệu thực tế cố định · 09/10/2026" if data["mode"]=="submission" else "Bộ dữ liệu cá nhân"), small)
     table(["Giá cuối phiên", "Ngày giá", "BCTC năm", "20 phiên"],
           [[fmt(m["close"], "price"), m["date"] or "Chưa có", latest.get("period", "Chưa có"), fmt(m["return_20"], "percent")]], [4.4*cm]*4)
-    add(data["opportunity"]["conclusion"], h2)
+    add("Tóm tắt từ bằng chứng đang có", h2)
+    bullet(research.get("executive") or [data["opportunity"]["conclusion"]])
     add(data["profile"].get("description", "Chưa có mô tả."))
     add("Luận điểm từ dữ liệu đã lưu", h2)
-    bullet(data["opportunity"]["positives"][:4])
+    bullet(research.get("financial", [])[:2])
     add("Rủi ro cần chú ý", h2)
     bullet(data["opportunity"]["risks"][:3])
     add("Phạm vi đánh giá", h2)
     add(f"Dữ liệu trong báo cáo có ngày và kỳ tham chiếu khác nhau. Giá kết thúc ở {m['date'] or 'chưa có'}; BCTC đến năm {latest.get('period', 'chưa có')}. Bộ demo không tự cập nhật. Các nhận định ngành là diễn giải định tính, chưa phải mô hình dự báo.")
-    add("Bố cục tham khảo báo cáo MiQuant: tóm tắt, doanh nghiệp, so sánh, định giá và rủi ro. Bổ sung riêng vĩ mô, giao dịch và dấu vết nguồn theo yêu cầu đề.", small)
+    add("Nhận định do quy tắc cố định tạo từ dữ liệu đã lưu; không sử dụng AI và không thay thế việc đối soát nguồn gốc.", small)
     chapter(2, "Vĩ mô và tác động tới ngành")
     if data["macro"]:
         table(["Chỉ tiêu", "Giá trị", "Kỳ / cơ sở so sánh", "Công bố"],
@@ -154,9 +160,9 @@ def _build_pdf(data, output):
         bullet(review["macro_to_bank"])
         add("Nguồn S3 được liệt kê trong phụ lục đối soát. Tác động tới lợi nhuận là diễn giải có điều kiện, chưa phải dự báo định lượng.",small)
     else:
-        bullet([r["text"] for r in data.get("macro_analysis",[])])
-        add(sector["context"])
-        bullet(sector["drivers"])
+        bullet(research.get("macro", []) or [r["text"] for r in data.get("macro_analysis",[])])
+        add("Cơ chế liên hệ với ngành: " + sector["context"])
+        add("Các yếu tố cần giám sát: " + "; ".join(sector["drivers"]), small)
     chapter(3, "Giá và giao dịch")
     if data["prices"]:
         story.append(chart(data, "price"))
@@ -176,30 +182,28 @@ def _build_pdf(data, output):
         fields = ["assets", "equity", "operating_income" if sector["key"] == "bank" else "revenue", "net_income",
                   "roe", "roa", "cir" if sector["key"] == "bank" else "net_margin",
                   "debt_assets"] + ([] if sector["key"] == "bank" else ["cfo", "current_ratio"])
-        table(headers, [["Doanh thu hoạt động" if field == "revenue" and sector["key"] == "securities" else LABELS[field]] + [fmt(r.get(field), "percent" if field in ["roe", "roa", "net_margin", "debt_assets", "cir"] else "number" if field == "current_ratio" else "billion") for r in rows] for field in fields],
+        table(headers, [[LABELS[field]] + [fmt(r.get(field), "percent" if field in ["roe", "roa", "net_margin", "debt_assets", "cir"] else "number" if field == "current_ratio" else "billion") for r in rows] for field in fields],
               [5.6*cm] + [12*cm/len(rows)]*len(rows))
         add("Đơn vị số tiền: tỷ đồng. Tỷ lệ: %. Thanh toán hiện hành: lần. “Chưa có” không phải bằng 0.", small)
-        for r in rows:
-            for issue in r.get("quality_issues", []):
-                add(f"Năm {r['period']}: {issue}", small)
         story.append(chart(data, "financial"))
-        add(f"Tăng doanh thu / thu nhập hoạt động năm {latest['period']}: {fmt(latest.get('revenue_growth'), 'percent')}. Tăng lợi nhuận sau thuế: {fmt(latest.get('profit_growth'), 'percent')}.", body)
+        add("Diễn giải kết quả tài chính", h2)
+        bullet(research.get("financial", []))
+        if research.get("quality_warnings"):
+            add("Cảnh báo chất lượng BCTC", h2)
+            bullet(research["quality_warnings"][:5])
     else:
         add("Chưa có BCTC trong bộ dữ liệu.")
     quarters = data.get("quarterly_financials",[])
     if quarters:
-        story.append(PageBreak())
         add("BCTC quý theo nguồn",h2)
         qfields=[("assets","Tổng tài sản"),("equity","Vốn chủ sở hữu"),
-                 ("operating_income" if sector["key"]=="bank" else "securities_revenue" if sector["key"]=="securities" else "revenue","Thu nhập hoạt động" if sector["key"]=="bank" else "Doanh thu hoạt động" if sector["key"]=="securities" else "Doanh thu thuần"),
+                 ("operating_income" if sector["key"]=="bank" else "revenue","Thu nhập hoạt động" if sector["key"]=="bank" else "Doanh thu thuần"),
                  ("net_income","LNST"),("cfo","Dòng tiền kinh doanh")]
         selected=quarters[-4:]
         table(["Chỉ tiêu"]+[r["period"] for r in selected],
               [[label]+[fmt(r["fields"].get(key,{}).get("value"),"billion") for r in selected] for key,label in qfields],
               [5.6*cm]+[12*cm/len(selected)]*len(selected))
         add("Đơn vị: tỷ đồng. "+quarters[-1]["note"],small)
-        for issue in sorted({issue for r in quarters for issue in r.get("quality_issues", [])}):
-            add(issue, small)
     add("Phạm vi đối soát số liệu", h2)
     if review:
         add(review["limitations"],small)
@@ -210,7 +214,7 @@ def _build_pdf(data, output):
         add("Từ ngành ngân hàng đến VCB",h2)
         bullet(review["bank_to_company"])
     add("Nhận định nhóm đối chiếu",h2)
-    bullet(data.get("peer_analysis",[]))
+    bullet(research.get("industry", []) or data.get("peer_analysis", []))
     add("Doanh nghiệp so sánh cùng kỳ", h2)
     summary = data.get("peer_summary", {})
     if data["peers"]:
@@ -231,44 +235,32 @@ def _build_pdf(data, output):
     else:
         add("Chưa có BCTC của doanh nghiệp đang phân tích để lập bảng cùng kỳ.")
     add("Nhóm doanh nghiệp được tự đề xuất theo ICB/cấu hình tham khảo; cần kiểm tra sự tương đồng mô hình kinh doanh, phạm vi BCTC và kỳ số liệu. Không coi trung vị là giá trị hợp lý của doanh nghiệp.", small)
-    add("Thông tin liên quan (RSS/bản tin đã lưu)", h2)
-    news_groups = [
-        ("Tin doanh nghiệp " + data["symbol"], data.get("company_news", [])),
-        ("Tin ngành " + data["sector"]["label"], data.get("sector_news", [])),
-        ("Tin vĩ mô", data.get("macro_news", [])),
-    ]
-    if not any(rows for _, rows in news_groups):
-        add("Chưa có tin theo ngành/mã. Có thể cập nhật RSS trong giao diện khi cần.")
-    for heading, rows in news_groups:
-        if not rows:
-            continue
-        add(heading, h2)
-        for n in sorted(rows, key=lambda item: str(item.get("published_at", "")), reverse=True)[:3]:
-            add(n["title"], h2)
-            status = {
-                "rss_metadata": "Theo CafeF · tin RSS, tự phân loại chưa đối soát",
-                "source_reviewed_summary": "Tóm tắt đã đối chiếu nguồn",
-                "user_reviewed": "Nội dung đã kiểm tra",
-                "metadata_only": "Chỉ có tiêu đề / URL",
-                "extracted_unreviewed": "Đã trích nội dung; chưa đối soát",
-            }.get(n.get("content_status"), "Thông tin chưa đối soát")
-            add(str(n.get("published_at", "")) + " | " + status, small)
-            add(n.get("summary") or "Chỉ có tiêu đề và URL, cần đọc nội dung gốc.")
-            add(n["url"], small)
-    add("Tin RSS chỉ cung cấp bối cảnh; mọi kết luận đầu tư cần đối chiếu báo cáo và nguồn gốc.", small)
-    chapter(6, "Cơ hội, định giá và rủi ro")
-    add(data["opportunity"]["conclusion"], h2)
-    bullet(data["opportunity"]["positives"])
-    add("Định giá và kịch bản", h2)
-    v = data["valuation"]
-    add(v["message"])
-    if v["available"]:
-        a = v["assumptions"]
-        add(v["formula"])
-        add(f"{'EPS' if v['method']=='PE' else 'BVPS'} dự phóng: {fmt(a['per_share'], 'price')}; hệ số cơ sở: {fmt(a['multiple'])} lần; ngày giả định: {a['as_of']}.")
-        table(["Kịch bản", "Hệ số", "Giá theo giả định", "So với giá đã lưu"],
-              [[r["label"], fmt(r["multiple"]), fmt(r["target"], "price"), fmt(r["upside"], "percent")] for r in v["scenarios"]], [4.4*cm]*4)
-        add("Nguồn giả định: " + a["source_url"], small)
+    add("Sự kiện và luận điểm từ nguồn tin được chọn", h2)
+    selected = research.get("news_theses", [])
+    if selected:
+        for item in selected:
+            add(item["heading"], h2)
+            add(item["text"])
+        add("Tin RSS chỉ phản ánh tiêu đề/tóm tắt do nguồn đăng; tác động phân tích luôn ở dạng điều kiện và phải đối chiếu với dữ liệu công bố.", small)
+    else:
+        add("Chưa có bản tin đủ liên quan và phù hợp nguồn để đưa thành luận điểm. Không chèn tin chung chỉ để đủ nội dung.")
+    chapter(6, "Cơ hội và rủi ro")
+    add("Tổng hợp luận điểm từ dữ liệu có thể kiểm tra", h2)
+    bullet(research.get("executive", []) or [data["opportunity"]["conclusion"]])
+    # Only historical context is displayed. Saved valuation scenarios are intentionally
+    # ignored; neither target prices nor scenario multiples belong in this report.
+    ctx = data.get("valuation", {}).get("inputs", {})
+    if ctx:
+        add("Chỉ số P/E lịch sử tham khảo", h2)
+        table(["Chỉ tiêu", "Dữ liệu"], [
+            ["Giá lưu / ngày", fmt(ctx.get("price"), "price") + " / " + str(ctx.get("price_date") or "chưa có")],
+            ["EPS năm " + str(ctx.get("year") or ""), fmt(ctx.get("historical_eps"), "price")],
+            ["P/E lịch sử (chưa đối soát chia tách)", fmt(ctx.get("historical_pe")) + " lần" if ctx.get("historical_pe") is not None else "Chưa có"],
+            ["P/E trung vị đối thủ (ít nhất 3 mã)", fmt(ctx.get("peer_pe_median_indicative")) + " lần" if ctx.get("peer_pe_median_indicative") is not None else "Chưa đủ dữ liệu"],
+        ], [8.7*cm, 8.9*cm])
+        add("Chỉ số lịch sử chỉ để tham khảo, không phải giá mục tiêu hay khuyến nghị. EPS và giá cần đối chiếu sự kiện cổ phiếu trước khi sử dụng.", small)
+        for warning in ctx.get("warnings", [])[:3]:
+            add("Lưu ý dữ liệu: " + warning, small)
     add("Rủi ro", h2)
     bullet(data["opportunity"]["risks"][:6])
     add("Điều kiện cần kiểm tra thêm", h2)
@@ -277,8 +269,17 @@ def _build_pdf(data, output):
     table(["Nhóm", "Trạng thái", "Phạm vi"], [[r["group"],r["status"],r["detail"]] for r in data["coverage"]], [4.2*cm,2*cm,11.4*cm])
     add("Quy tắc tính toán", h2)
     bullet(data["methodology"])
-    add("Nguồn dữ liệu", h2)
+    add("Tài liệu và bài báo được tham chiếu trong phần nhận định", h2)
+    if research.get("references"):
+        for ref in research["references"]:
+            add(f"[{ref['id']}] {ref['title']} | {ref['published_at']} | {ref['status']}", small)
+            add(ref["url"], small)
+    else:
+        add("Không chọn được bài báo phù hợp. Các chỉ tiêu tài chính và giá có nguồn lưu trữ riêng.", small)
+    add("Nguồn dữ liệu gốc và dấu vết thu thập", h2)
     for s in data["sources"]:
+        if s.get("file") == "valuations.json":
+            continue  # Historical valuation scenario files stay on disk, not in report
         add(s.get("source", s["file"]) + "  |  " + s["file"], small)
         add(s.get("source_url", "") + "  |  Kỳ: " + str(s.get("as_of", "ghi theo dòng")), small)
     if data["macro"]:

@@ -14,8 +14,8 @@ FIELDS = {
     "current_liabilities": ["bs_no_ngan_han", "bs_tong_no_ngan_han"],
     "revenue": ["is_doanh_so_thuan", "is_doanh_thu_thuan", "is_doanh_thu_thuan_ve_hoat_dong_kinh_doanh"],
     "net_income": ["is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep", "is_lai_lo_thuan_sau_thue", "is_loi_nhuan_ke_toan_sau_thue", "is_loi_nhuan_sau_thue"],
-    "parent_income": ["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu"],
-    "cfo": ["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh", "cf_luu_chuyen_thuan_tu_hoat_dong_kinh_doanh_chung_khoan"],
+    "parent_income": ["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me"],
+    "cfo": ["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh"],
     "eps": ["is_lai_co_ban_tren_co_phieu"],
     "net_interest_income": ["is_thu_nhap_lai_thuan"],
     "operating_income": ["is_tong_thu_nhap_hoat_dong"],
@@ -60,6 +60,12 @@ SECTORS = {
         "drivers": ["Thanh khoản và giá trị giao dịch thị trường", "Dư nợ margin và chi phí vốn", "Doanh thu môi giới, tự doanh, tư vấn"],
         "risks": ["Thị trường giảm thanh khoản khiến phí môi giới giảm.", "Rủi ro giá tài sản tự doanh và dư nợ margin."],
         "checks": ["Thị phần môi giới", "Dư nợ margin", "Doanh thu tự doanh", "An toàn vốn"],
+    },
+    "telecom": {
+        "label": "Viễn thông", "context": "Nhu cầu kết nối và hạ tầng mạng hỗ trợ dịch vụ viễn thông, nhưng tác động phụ thuộc khu vực kinh doanh, tỷ giá và đầu tư mạng lưới.",
+        "drivers": ["Số thuê bao và doanh thu mỗi thuê bao", "Thị phần và đầu tư hạ tầng mạng", "Tỷ giá tại các thị trường hoạt động"],
+        "risks": ["Chi phí đầu tư và khấu hao hạ tầng mạng.", "Rủi ro tỷ giá và pháp lý tại thị trường nước ngoài."],
+        "checks": ["Thuê bao", "ARPU", "CAPEX", "Dòng tiền kinh doanh", "Chênh lệch tỷ giá"],
     },
     "real_estate": {
         "label": "Bất động sản", "context": "Phụ thuộc lãi suất, pháp lý dự án, khả năng huy động vốn và khả năng hấp thụ của thị trường.",
@@ -119,8 +125,6 @@ def financial_rows(facts, ticker, sector="other"):
         return []
     d = facts.loc[facts.symbol == ticker]
     rows = []
-    from .financials import suspect_years
-    suspect = suspect_years(facts, ticker)
     # Manual canonical fields and original repository item codes both supported.
     for period in sorted(d.period.unique()):
         p = d.loc[d.period == period]
@@ -136,22 +140,12 @@ def financial_rows(facts, ticker, sector="other"):
             row.setdefault(field, None)
         if sector == "bank":
             row["revenue"] = row["operating_income"]
-        if sector == "securities":
-            for code in ["securities_revenue", "is_doanh_thu_hoat_dong"]:
-                if code in values and pd.notna(values[code]):
-                    row["revenue"] = float(values[code])
-                    evidence["revenue"] = code
-                    break
-        if row["eps"] is not None and abs(row["eps"]) > 1e7:
-            row["eps"] = None
-        if str(period) in suspect:
-            row["quality_issues"] = ["Hai năm liền kề trùng toàn bộ chỉ tiêu nguồn; cần nạp nguồn thay thế hoặc đối soát báo cáo gốc."]
         row["evidence"] = evidence
         rows.append(row)
     for i, r in enumerate(rows):
         prev = rows[i-1] if i else {}
         # ROA/ROE need contiguous years and opening balances.
-        consecutive = bool(prev) and int(r["period"]) == int(prev["period"]) + 1 and not r.get("quality_issues") and not prev.get("quality_issues")
+        consecutive = bool(prev) and int(r["period"]) == int(prev["period"]) + 1
         avg_equity = (r["equity"] + prev["equity"]) / 2 if consecutive and r["equity"] is not None and prev["equity"] is not None else None
         avg_assets = (r["assets"] + prev["assets"]) / 2 if consecutive and r["assets"] is not None and prev["assets"] is not None else None
         r["roe"] = safe_div(r["net_income"], avg_equity)
@@ -162,12 +156,14 @@ def financial_rows(facts, ticker, sector="other"):
         r["current_ratio"] = safe_div(r["current_assets"], r["current_liabilities"]) if sector != "bank" else None
         r["debt_assets"] = safe_div(r["liabilities"], r["assets"])
         r["cir"] = safe_div(abs(r["operating_expense"]), r["operating_income"]) if sector == "bank" and r["operating_expense"] is not None else None
+    from .research_quality import audit_financial_rows
+    audit_financial_rows(rows, sector)
     return rows
 
 
 def valuation(assumptions, last_price):
     if not assumptions:
-        return {"available": False, "message": "Chưa có định giá: cần nhập EPS/BVPS dự phóng đã điều chỉnh số cổ phiếu, hệ số mục tiêu và nguồn giả định."}
+        return {"available": False, "message": "Chưa lưu kịch bản định giá. Xem EPS/P-E lịch sử tham khảo và nhập giả định có nguồn ở biểu mẫu bên dưới."}
     method = assumptions.get("method")
     if method not in ["PE", "PB"]:
         raise ValueError("Phương pháp định giá phải là PE hoặc PB.")
@@ -185,9 +181,15 @@ def valuation(assumptions, last_price):
         target = assumptions["per_share"] * multiple
         scenarios.append({"label": label, "multiple": multiple, "target": target,
                           "upside": safe_div(target - last_price, last_price) if last_price else None})
+    basis = assumptions.get("basis", "forecast")
+    label = "dự phóng" if basis == "forecast" else "lịch sử đã đối soát"
+    warning = []
+    if not assumptions.get("reviewed"):
+        warning.append("Giả định được nhập từ phiên bản cũ, cần kiểm tra lại nguồn và cơ sở cổ phiếu.")
     return {"available": True, "method": method, "assumptions": assumptions,
-            "formula": "Giá kịch bản = EPS dự phóng × P/E mục tiêu" if method == "PE" else "Giá kịch bản = BVPS dự phóng × P/B mục tiêu",
-            "scenarios": scenarios, "message": "Kịch bản phụ thuộc giả định do người dùng nhập; không gán xác suất và không coi là kết quả dự báo."}
+            "basis": basis, "warnings": warning, "reference_price": assumptions.get("reference_price", last_price),
+            "formula": f"Giá kịch bản = {'EPS' if method=='PE' else 'BVPS'} {label} × {'P/E' if method=='PE' else 'P/B'} mục tiêu",
+            "scenarios": scenarios, "message": "Kịch bản theo chỉ tiêu lịch sử đã đối soát, không phải dự báo tương lai." if basis == "historical" else "Kịch bản dự phóng do người dùng kiểm tra và lưu; không gán xác suất, không phải khuyến nghị."}
 
 
 def analyze(store: Store, ticker: str):
@@ -197,10 +199,6 @@ def analyze(store: Store, ticker: str):
     profile = companies.get(ticker, {"name": catalogue.get(ticker,{}).get("name",ticker), "sector": "other", "peers": [], "description": "Chưa có hồ sơ doanh nghiệp."})
     from .peers import map_sector, suggest, compare, explain
     selected_peers = suggest(store, ticker, profiles=companies)
-    if store.mode in {"sample", "submission"}:
-        # Frozen snapshots retain the reviewed comparison group. Live local
-        # analysis still uses the new discovery rules and richer peer metrics.
-        selected_peers = {**selected_peers, "peers": profile.get("peers", [])}
     sector_key = map_sector(ticker, profile, store.read_json("industry_catalog.json", {}).get("symbols", {}).get(ticker, {}))
     inferred_sector = profile.get("sector", "other") in (None, "", "other") and sector_key != "other"
     sector = SECTORS.get(sector_key, SECTORS["other"])
@@ -241,9 +239,6 @@ def analyze(store: Store, ticker: str):
         peers, peer_summary = compare(facts, prices, ticker, selected_peers,
                                       financials[-1]["period"], financial_rows, sector_key)
     peer_notes = explain(peers, peer_summary, ticker, fmt)
-    if store.mode in {"sample", "submission"}:
-        original_fields = ("symbol", "period", "revenue", "net_income", "roe", "roa", "net_margin", "debt_assets", "cir")
-        peers = [{key: r.get(key) for key in original_fields} for r in peers if r.get("financial_available")]
     latest = financials[-1] if financials else {}
     macro_history = store.read_json("macro.json", [])
     macro = latest_macro(macro_history)
@@ -268,39 +263,47 @@ def analyze(store: Store, ticker: str):
         (positives if market["return_20"] > 0 else concerns).append(f"Giá thay đổi {fmt(market['return_20'], 'percent')} trong 20 phiên; chưa cộng cổ tức tiền mặt.")
     if market["relative_20"] is not None:
         (positives if market["relative_20"] > 0 else concerns).append(f"Chênh lệch hiệu suất so với VN-Index: {fmt(market['relative_20'] * 100)} điểm phần trăm trong 20 phiên chung.")
+    critical_financial = [field for field in ("assets", "equity", "net_income", "revenue") if latest and latest.get(field) is None]
+    latest_year_issues = bool(latest.get("quality_issues")) if latest else False
     coverage = [
         {"group": "Giá và giao dịch", "status": "Có" if len(p) else "Thiếu", "detail": f"{len(p)} phiên; cuối kỳ {price_date or 'chưa có'}"},
-        {"group": "Báo cáo tài chính", "status": "Có" if financials else "Thiếu", "detail": f"{len(financials)} năm; gần nhất {latest.get('period', 'chưa có')}; số liệu nguồn chưa đối soát PDF kiểm toán"},
+        {"group": "Báo cáo tài chính", "status": ("Một phần" if financials and (critical_financial or latest_year_issues) else "Có" if financials else "Thiếu"), "detail": f"{len(financials)} năm đã lưu; gần nhất {latest.get('period', 'chưa có')}" + (("; thiếu chỉ tiêu " + ", ".join(critical_financial)) if critical_financial else "") + ("; cần kiểm tra kỳ đáng nghi" if latest_year_issues else "") + "; chưa đối soát PDF kiểm toán"},
         {"group": "Tin tức", "status": "Có" if news else "Thiếu", "detail": f"{len(news)} tin đã lưu; nội dung {', '.join(sorted(set(n.get('content_status', 'chưa trích') for n in news))) or 'chưa nạp'}"},
         {"group": "Vĩ mô", "status": "Có" if macro else "Thiếu", "detail": f"{len(macro)} chỉ tiêu; xem kỳ tham chiếu và ngày công bố"},
-        {"group": "So sánh ngành", "status": "Có" if peer_summary["peers_with_financials"] > 0 else "Thiếu", "detail": f"{peer_summary['peer_count']} mã ứng viên; {peer_summary['peers_with_financials']} mã có BCTC cùng năm"},
+        {"group": "So sánh ngành", "status": ("Có" if peer_summary["peers_with_financials"] >= 3 else "Một phần" if peer_summary["peer_count"] else "Thiếu"), "detail": f"{peer_summary['peer_count']} mã ứng viên; {peer_summary['peers_with_financials']} mã có BCTC cùng năm (chưa đồng nghĩa đủ chỉ tiêu/đối soát)"},
     ]
     coverage.append({"group":"BCTC quý", "status":"Có" if quarterly else "Thiếu", "detail": f"{len(quarterly)} kỳ; gần nhất {quarterly[-1]['period'] if quarterly else 'chưa có'}; chưa xác minh riêng quý/lũy kế"})
-    concerns += sorted({issue for r in quarterly for issue in r.get("quality_issues", [])})
-    concerns += [issue for r in financials for issue in r.get("quality_issues", [])]
-    for item in coverage:
-        if item["group"] == "Báo cáo tài chính" and any(r.get("quality_issues") for r in financials):
-            item["status"] = "Cần đối soát"
-        if item["group"] == "BCTC quý" and any(r.get("missing_fields") or r.get("quality_issues") for r in quarterly):
-            item["status"] = "Một phần"
     concerns += sector["risks"]
     if latest and price_date and int(latest["period"]) < int(price_date[:4]) and not quarterly:
         concerns.append(f"BCTC mới nhất trong bộ dữ liệu là năm {latest['period']}; chưa có BCTC quý hiện tại.")
+    from .valuation_engine import historical_context
+    valuation_inputs = historical_context(facts, prices, ticker, peers, financial_rows, sector_key)
     assumptions = store.read_json("valuations.json", {}).get(ticker)
-    valu = valuation(assumptions, last_price)
+    # The original reference price is preserved for a reproducible scenario.
+    # Price changes should never silently rewrite a previously saved upside.
+    basis_price = assumptions.get("reference_price") if isinstance(assumptions, dict) else None
+    valu = valuation(assumptions, basis_price or last_price)
+    valu["inputs"] = valuation_inputs
+    if assumptions and basis_price and last_price and abs(last_price - basis_price) > 0.000001:
+        valu.setdefault("warnings", []).append("Giá đã thay đổi sau khi lưu giả định; kết quả đang so với giá tham chiếu lúc lưu. Cần lưu lại để cập nhật kịch bản.")
     if quarterly:
         concerns.append("BCTC quý đã lưu riêng; KQKD/dòng tiền cần đối soát cơ sở riêng quý hay lũy kế trước khi cộng TTM.")
+    from .research_quality import collect_quality
+    data_quality = collect_quality(financials, sector_key, quarterly)
+    if data_quality:
+        # Never issue a positive investment call from questionable yearly financial rows.
+        concerns.extend(data_quality)
     manifest = store.manifest()
     sources = [{"file": name, **meta} for name, meta in manifest.get("files", {}).items() if not name.startswith("raw/")]
     # Stable data cut-off; no current-clock values in an offline analysis.
     as_of = max([x for x in [price_date] + [m.get("published_at") for m in macro] + [n.get("published_at", "")[:10] for n in news] if x], default=latest.get("period", ""))
     result = {"symbol": ticker, "mode": store.mode, "as_of": as_of, "profile": profile,
-            "sector": {"key": sector_key, **sector, **({"is_provisional": True} if inferred_sector else {})}, "market": market,
+            "sector": {"key": sector_key, "is_provisional": inferred_sector, **sector}, "market": market,
             "prices": p[["date", "close", "volume"]].to_dict("records") if not p.empty else [],
             "financials": financials, "quarterly_financials": quarterly, "peers": peers, "macro": macro, "news": news, "company_news": company_news, "sector_news": sector_news, "macro_news": macro_news,
             "macro_history": macro_history, "macro_analysis": explain_macro(macro,sector_key,fmt), "peer_analysis": peer_notes, "peer_summary": peer_summary, "peer_selection": selected_peers,
             "exchange_rates":store.read_json("exchange_rates.json",[]),
-            "coverage": coverage, "opportunity": {"conclusion": conclusion(latest,market,valu),
+            "coverage": coverage, "data_quality": data_quality, "opportunity": {"conclusion": conclusion(latest,market,valu),
             "positives": positives or ["Chưa đủ dữ liệu để xác định luận điểm tích cực."],
             "risks": concerns, "next_checks": sector["checks"] + ["Đối soát BCTC gốc", "Kiểm tra sự kiện cổ tức / chia tách", "Cập nhật báo cáo quý và tin công bố"]},
             "valuation": valu, "sources": sources,
@@ -312,5 +315,7 @@ def analyze(store: Store, ticker: str):
                             "So sánh cùng năm, trung vị chỉ dùng mã có số liệu; chưa tự tính P/B/P/E khi thiếu cơ sở cổ phiếu lưu hành.",
                             "Báo cáo mô tả bộ dữ liệu hiện có, không phải mô phỏng thông tin đã biết tại một ngày quá khứ."]}
 
+    from .research_rules import compile_research
+    result["research"] = compile_research(result, store=store)
     from .review import apply_review
     return apply_review(store,result)

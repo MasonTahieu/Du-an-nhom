@@ -1,8 +1,10 @@
 {
   "method": "PB",
+  "basis": "historical",
   "per_share": 10000,
   "multiple": 1.5,
-  "as_of": "2026-10-08",
-  "source_url": "https://example.com/replace-with-verified-source",
-  "note": "CHỈ LÀ MẪU CẤU TRÚC. Thay số liệu, nguồn và ngày trước khi nạp. per_share là BVPS dự phóng VND/cp; PE dùng EPS. Đối soát cổ phiếu sau chia tách."
+  "as_of": "2026-10-09",
+  "source_url": "https://example.com/REPLACE_WITH_VERIFIED_DOCUMENT",
+  "reviewed": false,
+  "note": "Chỉ là mẫu. Nhập BVPS/EPS đã kiểm tra sự kiện cổ phiếu, ngày và URL nguồn chính xác; xác nhận reviewed=true sau khi đối soát. Để dự phóng, đổi basis thành forecast và nêu giả định cụ thể."
 }

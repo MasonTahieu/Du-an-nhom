@@ -26,6 +26,7 @@ PREFERRED = {
     "retail": ["MWG", "FRT", "PNJ"],
     "energy": ["POW", "REE", "PC1"],
     "oil_gas": ["GAS", "PVS", "PVD"],
+    "telecom": ["FOX", "MFS", "TTN", "CTR", "VGI"],
 }
 URL = "https://vnstocks.com/docs/vnstock/tra-cuu-thong-tin-tham-chieu-reference"
 
@@ -48,6 +49,8 @@ def map_sector(ticker, profile=None, industry=None):
         return "bank"
     if "san xuat thep" in label or "steel" in label:
         return "steel"
+    if any(term in label for term in ("vien thong", "telecommunication", "telecom", "wireless", "mobile telecom", "internet service")):
+        return "telecom"
     return "other"
 
 
@@ -145,24 +148,26 @@ def suggest(store: Store, ticker, *, profiles=None, limit=5):
         t_sector = map_sector(t, profiles.get(t), cinfo)
         exact_icb = bool(code and ccode and code == ccode)
         if code:
-            # When the analyzed company has a verified ICB code, only exact
-            # ICB matches are allowed; broader curated labels cannot override it.
-            if not exact_icb: continue
+            # Same detailed ICB always wins. For telecom only, supplement the
+            # often fragmented ICB categories with explicit curated peers;
+            # mark them provisional, never report as exact industry matches.
+            if not exact_icb and not (sector == "telecom" and t_sector == "telecom"):
+                continue
         elif sector == "other" or t_sector != sector:
             continue
-        # Avoid UPCoM if the cache indicates it; annual Tumiqa cache excludes it.
-        if catalogue.get(t) == "UPCOM": continue
+        # Do not exclude UPCoM: the candidate list is not a promise of annual
+        # financial coverage. Annuals are checked separately by the loader.
         # exact ICB > explicit peer > same curated sector; do not mistake a list
         # of industry candidates for a verified business-model match.
         score = (3 if exact_icb else 2 if t in original else 1)
         ranked.append(((-score, original.index(t) if t in original else 999, preferred.index(t) if t in preferred else 999, t), t,
-                       "ICB cùng mã ngành" if exact_icb else "Được cấu hình" if t in original else "Ngành tham khảo"))
+                       "ICB cùng mã ngành" if exact_icb else "Được cấu hình" if t in original else "Ngành tham khảo (khác phân ngành chi tiết)" if code else "Ngành tham khảo"))
     ranked.sort(key=lambda x:x[0])
     selected = [{"symbol":t,"reason":reason} for _,t,reason in ranked[:max(0,min(5,int(limit)))]]
     return {"sector":sector,"sector_source":sector_source,"industry_name":icb.get("industry_name", ""),
             "industry_code":code,"candidates":selected,"peers":[r["symbol"] for r in selected],
-            "note": ("Chỉ có " + str(len(selected)) + " mã phù hợp đã biết; không bổ sung mã khác ngành." if len(selected)<3 else
-                     "Đây là nhóm ứng viên theo phân ngành; cần xác minh mô hình kinh doanh trước khi dùng định giá.")}
+            "note": ("Chỉ có " + str(len(selected)) + " mã ứng viên phù hợp đã biết; không thêm mã khác ngành." if len(selected)<3 else
+                     "Đây là danh sách ứng viên theo ngành; các mô hình kinh doanh và BCTC cần được đối soát riêng.")}
 
 
 def compare(facts, prices, ticker, selected, year, financial_rows, sector):

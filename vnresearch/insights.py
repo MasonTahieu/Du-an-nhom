@@ -4,8 +4,7 @@ import pandas as pd
 
 def quarterly_rows(frame, ticker):
     if frame.empty: return []
-    from .financials import resolve_fields
-    d, diagnostics = resolve_fields(frame.loc[frame.symbol==ticker])
+    d=frame.loc[frame.symbol==ticker]
     result=[]
     for period,g in d.groupby("period",sort=True):
         fields={}
@@ -16,9 +15,6 @@ def quarterly_rows(frame, ticker):
                 fields[field]={"value":float(r.value),"basis":r.basis,"scope":r.scope,
                                "item_name":r.item_name,"source_url":r.source_url}
         result.append({"period":str(period),"fields":fields,
-                       "missing_fields": [f for f in ("assets", "equity", "net_income", "cfo") if f not in fields] + (["revenue"] if not any(f in fields for f in ("revenue", "securities_revenue", "operating_income")) else []),
-                       "quality_issues": (["Cache KBS có nguy cơ lệch nhãn kỳ; nạp lại BCTC quý để lấy nguồn VCI."] if g.source_url.fillna("").str.contains("kbbuddywts.kbsec.com.vn", regex=False).any() else []),
-                       "field_status": {f: "ambiguous" for details in diagnostics.values() for f in details.get(str(period), {}).get("ambiguous_fields", [])},
                        "note":"Tài sản/nợ/vốn tại thời điểm báo cáo. KQKD và dòng tiền theo kỳ nguồn; chưa xác minh riêng quý/lũy kế. Không tính TTM hoặc ROE quý."})
     return result
 
@@ -82,8 +78,5 @@ def conclusion(latest,market,valuation):
         text="CÓ ĐIỂM TÍCH CỰC — lợi nhuận năm tăng và giá 20 phiên tăng; cần kiểm tra tính bền vững."
     else:
         text="TIẾP TỤC THEO DÕI — bằng chứng tài chính và diễn biến giá chưa đồng thuận rõ."
-    if not valuation.get("available"):
-        text+=" Chưa đủ giả định để đánh giá mức giá hấp dẫn."
-    else:
-        text+=" So sánh giá với các kịch bản định giá đã nhập; kết quả phụ thuộc giả định."
+    # No target-price or scenario conclusion in the research-only UI/PDF.
     return text

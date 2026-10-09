@@ -40,3 +40,15 @@ main{margin-left:250px;padding:32px 38px;max-width:1650px}header{display:flex;ju
 
 .news-classification{font-size:10px;color:var(--muted)}
 .load-panel-body #loadNewsButton{margin:4px 5px}
+
+/* Auditable on-page valuation workflow: no automatic forecasts without confirmation. */
+.valuation-form {display:flex;flex-direction:column;gap:14px;}
+.valuation-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.valuation-field {display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink);}
+.valuation-field input,.valuation-field select,.valuation-field textarea {width:100%;box-sizing:border-box;font:inherit;font-weight:400;padding:10px;border:1px solid #cddce6;border-radius:6px;background:white;color:var(--ink);}
+.valuation-field textarea {min-height:75px;resize:vertical;}
+.valuation-check {display:flex;align-items:flex-start;gap:9px;font-size:12px;line-height:1.5;cursor:pointer;}
+.valuation-check input {margin:3px 0 0;flex-shrink:0;}
+.valuation-actions {display:flex;flex-wrap:wrap;gap:9px;}
+.valuation-preview {border-top:1px solid var(--line);padding-top:12px;margin-top:8px;}
+@media (max-width:750px) {.valuation-grid {grid-template-columns:1fr;}}

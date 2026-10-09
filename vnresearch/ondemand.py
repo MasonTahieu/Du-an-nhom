@@ -14,6 +14,11 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
     ticker = symbol(ticker)
     cfg = config()
     result = {"symbol": ticker, "steps": [], "failed": []}
+    def explain_error(exc):
+        if isinstance(exc, KeyError):
+            return ("Thiếu trường trong dữ liệu/API: " + repr(str(exc)) +
+                    ". Nguồn hoặc cache đã đổi cấu trúc; dữ liệu cũ không bị xóa.")
+        return f"{type(exc).__name__}: {str(exc)}"
     def step(label, action):
         progress(label)
         try:
@@ -24,13 +29,17 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
                 result["failed"].append({"step": label, "error": str(failed or state)[:500]})
             result["steps"].append({"name": label, "status": "partial" if failed else state})
         except (Exception, SystemExit) as exc:
-            result["failed"].append({"step": label, "error": str(exc)[:500]})
+            result["failed"].append({"step": label, "error": explain_error(exc)[:500]})
             result["steps"].append({"name": label, "status": "failed"})
 
     if news_only:
         from .newsfeed import collect_rss_feeds
         step("Tin RSS CafeF · tự phân loại ngành và doanh nghiệp", lambda: collect_rss_feeds(store))
-        result["coverage"] = [r for r in readiness(store)["symbols"] if r["symbol"] == ticker]
+        try:
+            result["coverage"] = [r for r in readiness(store)["symbols"] if r["symbol"] == ticker]
+        except (Exception, SystemExit) as exc:
+            result["coverage"] = []
+            result["failed"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "error":explain_error(exc)[:500]})
         result["macro_count"] = len(store.read_json("macro.json", []))
         result["status"] = "partial" if result["failed"] else "complete"
         result["note"] = "RSS chỉ có tiêu đề, tóm tắt và URL; ngành/mã được gắn theo quy tắc, chưa đối soát."
@@ -51,14 +60,25 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
         from .newsfeed import sector_for_ticker
         if sector_for_ticker(ticker, profiles[ticker]) == "other":
             step("Tra cứu phân ngành ICB (nếu nguồn hỗ trợ)", lambda: refresh_industry_catalog(store))
-    selection = suggest(store, ticker, profiles=profiles)
+    try:
+        selection = suggest(store, ticker, profiles=profiles)
+    except (Exception, SystemExit) as exc:
+        result["failed"].append({"step": "Chọn nhóm cùng ngành", "error": explain_error(exc)[:500]})
+        selection = {"peers": [], "candidates": [], "sector": "other", "sector_source": "Không lấy được phân ngành",
+                     "note": "Đã giữ lại dữ liệu mã chính; không tự ghép nhóm ngành khi lỗi."}
     wanted = list(dict.fromkeys([ticker] + selection["peers"]))
     result["peer_selection"] = selection
     for t in wanted:
         exchange = catalogue.get(t, {}).get("exchange")
         exchanges = {"HOSE": ["HSX"], "HSX": ["HSX"], "HNX": ["HNX"], "UPCOM": []}.get(exchange, ["HSX", "HNX"])
         if not exchanges:
-            result["failed"].append({"step": "BCTC năm " + t, "error": "Nguồn năm chưa hỗ trợ UPCoM."})
+            # UPCoM: Tumiqa's HSX/HNX bundles do not cover this exchange.
+            # Reuse the VCI provider already part of vnstock, without adding
+            # an external service or making a separate UPCoM data store.
+            from .upcom_annual import fetch_annual_vci
+            def upcom(t=t):
+                return fetch_annual_vci(store, t, first_year=cfg["first_year"])
+            step("BCTC năm " + t + " · VCI (UPCoM, nếu có)", upcom)
             continue
         def annual(t=t, exchanges=exchanges):
             errors = []
@@ -70,9 +90,15 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
                     errors.append(str(exc))
             raise ValueError("; ".join(errors))
         step("BCTC năm " + t + " · dùng cache nếu có", annual)
-        from .financials import repair_annual_sources
-        step("Kiểm tra / bổ sung BCTC năm " + t,
-             lambda t=t: repair_annual_sources(store, [t], first_year=cfg["first_year"], progress=progress))
+        # Optional built-in VCI repair for corrupt/incomplete existing years;
+        # failure must not remove historical data or stop price/news updates.
+        try:
+            from .financials import repair_annual_sources
+        except ImportError:
+            repair_annual_sources = None
+        if repair_annual_sources is not None:
+            step("Đối soát / bổ sung BCTC năm " + t + " qua VCI khi cần",
+                 lambda t=t: repair_annual_sources(store, [t], first_year=cfg["first_year"], progress=progress))
 
     prices = store.read("prices.parquet")
     for t in [ticker, cfg.get("benchmark", "VNINDEX")]:
@@ -86,9 +112,16 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
         step("Vĩ mô và tin " + ticker, lambda: _run("context", [ticker], include_rss=False))
         from .newsfeed import collect_rss_feeds
         step("Tin RSS CafeF · ngành và cổ phiếu", lambda: collect_rss_feeds(store))
-    coverage = readiness(store)
-    result["coverage"] = [r for r in coverage["symbols"] if r["symbol"] in wanted]
-    result["macro_count"] = coverage["macro_count"]
+    try:
+        coverage = readiness(store)
+        result["coverage"] = [r for r in coverage["symbols"] if r["symbol"] in wanted]
+        result["macro_count"] = coverage["macro_count"]
+    except (Exception, SystemExit) as exc:
+        # A read-only coverage/SDK schema exception should not turn an otherwise
+        # successful import into the unhelpful job-level 'missing-fields'.
+        result["coverage"] = []
+        result["macro_count"] = len(store.read_json("macro.json", []))
+        result["failed"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "error":explain_error(exc)[:500]})
     result["status"] = "partial" if result["failed"] else "complete"
     result["note"] = "Đã đề xuất "+str(len(selection["peers"]))+" mã cùng ngành. "+selection["note"]+" Hoàn tất nạp không có nghĩa dữ liệu đã được đối soát."
     return result
@@ -131,4 +164,4 @@ class LoadJobs:
                 self.job.update(status=result["status"], result=result, message="Đã kết thúc lượt nạp")
         except (Exception, SystemExit) as exc:
             with self.lock:
-                self.job.update(status="failed", message=str(exc)[:500])
+                self.job.update(status="failed", message=("Lỗi "+type(exc).__name__+": "+str(exc))[:500])
