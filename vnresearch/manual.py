@@ -8,7 +8,7 @@ from .locking import process_lock
 def config():
     return json.loads((ROOT/"config/watchlist.json").read_text(encoding="utf-8"))
 
-def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=False, dry_run=False, annual_only=False, all_market=False, exchanges=None, limit=None):
+def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=False, dry_run=False, annual_only=False, all_market=False, exchanges=None, limit=None, include_rss=True):
     settings = config()
     store = Store("local")
     if kind=="universe":
@@ -51,7 +51,10 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
                 value=fn()
                 result["steps"][name]=value
                 if isinstance(value,dict):
-                    result["failed"].extend(value.get("failed",[]))
+                    failures = value.get("failed", [])
+                    result["failed"].extend(failures)
+                    if value.get("status") in {"partial", "rate_limited", "interrupted"} and not failures:
+                        result["failed"].append({"step": name, "error": "Nguồn chưa đủ chỉ tiêu/kỳ; xem chẩn đoán từng kỳ trong kết quả bước nạp."})
             except (Exception,SystemExit) as exc:
                 result["failed"].append({"step":name,"error":str(exc)[:500]})
             finally:
@@ -75,6 +78,9 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
                 if not codes: continue
                 step("BCTC năm "+exchange,lambda exchange=exchange,codes=codes:fetch_annual_reference(store,codes,
                      settings["reference_commit"],exchange,settings["first_year"]))
+            from .financials import repair_annual_sources
+            step("Kiểm tra / bổ sung BCTC năm", lambda: repair_annual_sources(store, annual_symbols,
+                 first_year=settings["first_year"]))
             if not annual_only:
                 step("BCTC quý",lambda:fetch_quarters(store,selected))
         elif kind == "context":
@@ -88,6 +94,9 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
             records=[n for n in sources["articles"] if n["symbol"] in selected]
             records += [n for n in store.read_json("news.json",[]) if n["symbol"] in selected][:5*len(selected)]
             step("Nội dung tin",lambda:collect_articles(store,records,refresh=refresh))
+            if include_rss:
+                from .newsfeed import collect_rss_feeds
+                step("Tin RSS CafeF",lambda:collect_rss_feeds(store))
         else:
             raise ValueError("Nhóm nạp không hợp lệ.")
     result["status"]="partial" if result["failed"] else "complete"

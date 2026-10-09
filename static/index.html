@@ -9,7 +9,7 @@
 </aside>
 <main>
 <header><div><div class="eyebrow">TỪ VĨ MÔ ĐẾN CƠ HỘI DOANH NGHIỆP</div><h1>Không gian nghiên cứu</h1></div><div class="header-actions"><button id="pdf" class="primary">Xuất báo cáo PDF ↗</button></div></header>
-<section class="toolbar"><label>Bộ dữ liệu<select id="mode"><option value="sample">Demo cố định · chạy offline</option><option value="submission" selected>Bộ thực tế cố định · VCB, FPT, HPG</option><option value="local">Dữ liệu thực tế đang cập nhật</option></select></label><label>Tìm cổ phiếu<input id="tickerSearch" type="search" placeholder="Mã hoặc tên doanh nghiệp" aria-label="Tìm cổ phiếu"></label><label>Doanh nghiệp<select id="ticker"></select></label><button id="refresh" class="secondary">Xem phân tích</button><div id="verified" class="badge"></div></section>
+<section class="toolbar"><input type="hidden" id="mode" value="local"><div class="single-data-label" title="Dữ liệu VCB/FPT/HPG và dữ liệu nạp mới dùng chung; không trộn dữ liệu demo."><span class="single-data-dot" aria-hidden="true"></span><div><strong>Dữ liệu cổ phiếu</strong><small>Một bộ dữ liệu · cập nhật theo yêu cầu</small></div></div><label>Tìm cổ phiếu<input id="tickerSearch" type="search" placeholder="Mã hoặc tên doanh nghiệp" aria-label="Tìm cổ phiếu"></label><label>Doanh nghiệp<select id="ticker"></select></label><button id="refresh" class="secondary">Xem phân tích</button><div id="verified" class="badge"></div></section>
 <details class="card load-panel" id="loadPanel">
 <summary class="load-panel-summary">
   <span class="load-panel-heading"><strong>Nạp dữ liệu theo mã</strong><small>Chỉ mở khi cần tải hoặc cập nhật dữ liệu</small></span>
@@ -21,8 +21,10 @@
 <label>Mã cần nạp <input id="loadTicker" maxlength="3" placeholder="Ví dụ: FPT"></label>
 <label><input id="loadExtended" type="checkbox"> Bổ sung BCTC quý, vĩ mô và tin tức (lâu hơn)</label>
 <button id="loadTickerButton" class="secondary">Nạp / cập nhật mã này</button>
+<button id="loadNewsButton" class="secondary" title="Chỉ cập nhật tin RSS, không tải lại giá/BCTC">Cập nhật tin CafeF theo ngành / mã</button>
+<p class="table-note">Tin CafeF là metadata RSS (tiêu đề, trích ngắn, URL). Phân loại tự động chưa đối soát, không phải số liệu vĩ mô chính thức. Việc cập nhật chỉ chạy khi bạn bấm nút.</p>
 <div id="loadProgress" role="status" aria-live="polite"></div>
-<p class="table-note">Giữ ứng dụng chạy trong lúc nạp. Bộ dữ liệu cố định không bị thay đổi. Mã mới chưa xác minh ngành sẽ hiển thị nhóm khác.</p>
+<p class="table-note">Giữ ứng dụng chạy trong lúc nạp. Mã VCB/FPT/HPG có sẵn được bổ sung vào bộ dữ liệu chung; dữ liệu bạn đã nạp trước đó được ưu tiên. Mã chưa xác minh ngành sẽ hiển thị nhóm khác.</p>
 </div>
 </details>
 <div id="notice" role="status" hidden></div>

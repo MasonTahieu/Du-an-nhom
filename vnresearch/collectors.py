@@ -1,15 +1,12 @@
-"""Bounded live sources: pinned annual Parquet, current KBS statements and official releases."""
+"""Bounded live sources: pinned annual Parquet, VCI statements and official releases."""
 from datetime import datetime, timezone
-import hashlib
 import json
-from pathlib import Path
 import re
-import unicodedata
 import time
 
 import pandas as pd
 from .storage import ROOT, Store, symbol, atomic_json
-from .ingest import _vnstock, import_reference, validate_financials
+from .ingest import validate_financials
 from .locking import process_lock
 
 REFERENCE = "https://github.com/Tumiqa/vn-annual-report-miner"
@@ -87,78 +84,12 @@ def fetch_annual_reference(store, tickers, commit, exchange="HSX", first_year=20
             "commit": commit, "downloaded_statements": downloaded,
             "source": "shared_tumiqa_cache", "status": "complete"}
 
-def clean_label(value):
-    s = unicodedata.normalize("NFKD", str(value).lower().replace("đ", "d"))
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    s = re.sub(r"^\s*(?:[a-z\d]+[.\-)]\s*|[ivx]+\s+)", "", s)
-    return re.sub(r"\s+", " ", s).strip()
-
-# Match the Vietnamese statement label, not item_id alone:
-# KBS maps gross sales and net sales to the same item_id "revenue".
-RULES = {
- "balance_sheet": {
-   "assets": r"^(tong cong tai san|tong tai san)(\s|\(|$)",
-   "equity": r"^(von chu so huu|tong von chu so huu|von va cac quy)(\s|\(|$)",
-   "liabilities": r"^(no phai tra|tong no phai tra)(\s|\(|$)",
-   "current_assets": r"^(tai san ngan han|tong tai san ngan han)(\s|\(|$)",
-   "current_liabilities": r"^(no ngan han|tong no ngan han)(\s|\(|$)",
-   "loans": r"^cho vay khach hang(\s|\(|$)",
-   "deposits": r"^tien gui cua khach hang(\s|\(|$)"
- },
- "income_statement": {
-   "revenue": r"^doanh thu thuan (ve ban hang|ban hang|ve hoat dong|hoat dong)|^doanh so thuan",
-   "net_income": r"^(loi nhuan sau thue|lai/?\(?lo\)? thuan sau thue|lai/?lo sau thue)(\s*\(|\s+thu nhap doanh nghiep|$)",
-   "parent_income": r"^loi nhuan sau thue cua co dong (cua cong ty me|cua ngan hang me)",
-   "operating_income": r"^tong thu nhap hoat dong",
-   "net_interest_income": r"^thu nhap lai thuan",
-   "operating_expense": r"^chi phi hoat dong(\s|\(|$)"
- },
- "cash_flow": {
-   "cfo": r"^luu chuyen tien thuan (tu|trong) (cac )?hoat dong (san xuat )?kinh doanh(?!.*truoc thue)"
- }
-}
+# Shared mapping is versioned and can be replayed from saved provider data.
+from .financials import clean_label, RULES, normalize_statement
 
 def normalize_quarters(raw, ticker, statement):
-    cols = [c for c in raw.columns if re.fullmatch(r"20\d{2}-Q[1-4]", str(c))]
-    if not cols or not {"item","item_id"} <= set(raw):
-        raise ValueError(f"{ticker}/{statement}: cấu trúc BCTC không hợp lệ.")
-    rules = RULES[statement]
-    matches = {k: [] for k in rules}
-    rows, skipped = [], []
-    for i,record in enumerate(raw.to_dict("records")):
-        if record.get("item_id") in {"audit_status","unit_type"}:
-            continue
-        label = clean_label(record["item"])
-        # The SDK multiplies ALL values by 1000, including EPS originally in VND.
-        # Keep those rows only in raw archive pending an explicit source correction.
-        if "co phieu" in label or "per_share" in str(record["item_id"]):
-            skipped.append(str(record["item"]))
-            continue
-        canonical = next((k for k,p in rules.items() if re.search(p, label)), None)
-        if canonical:
-            matches[canonical].append(i)
-        for period in cols:
-            value = pd.to_numeric(record.get(period), errors="coerce")
-            if pd.isna(value):
-                continue
-            if not __import__("math").isfinite(float(value)):
-                raise ValueError("BCTC chứa số không hữu hạn.")
-            scope_value = str(raw.attrs.get("unit_type",{}).get(period, ""))
-            scope = "consolidated" if scope_value == "Hợp nhất" else "separate" if scope_value == "Riêng lẻ" else "provider_unspecified"
-            rows.append({"symbol": ticker, "period": period, "statement": statement,
-                         "item_code": f"{statement}/{record['item_id']}/{i}", "item_name": str(record["item"]),
-                         "canonical_field": canonical or "", "value": float(value), "unit": "VND", "scope": scope,
-                         "basis": "point_in_time" if statement == "balance_sheet" else "provider_period_unspecified",
-                         "audit_status": str(raw.attrs.get("audit_status",{}).get(period, "unknown")),
-                         "source_url": KBS_URL, "retrieved_at": utc()})
-    ambiguous = {k for k,v in matches.items() if len(v)>1}
-    for r in rows:
-        if r["canonical_field"] in ambiguous:
-            r["canonical_field"] = ""
-    if not rows:
-        raise ValueError(f"{ticker}: BCTC quý rỗng.")
-    return pd.DataFrame(rows), {"skipped_per_share": skipped, "ambiguous_fields": sorted(ambiguous),
-                               "missing_fields": sorted(k for k,v in matches.items() if not v)}
+    return normalize_statement(raw, ticker, statement)
+
 
 def fetch_kbs_quarter(finance_factory, ticker, statement):
     # vnai can install narrower wrappers after the first provider call.
@@ -169,54 +100,79 @@ def fetch_kbs_quarter(finance_factory, ticker, statement):
     return getattr(finance_factory(ticker, period="quarter"), statement)(period="quarter")
 
 def fetch_quarters(store, tickers, *, delay=7.0, progress=print, fetch=None):
-    if fetch is None:
-        _vnstock()  # Optional SDK is loaded only for a real user-launched fetch.
-        from vnstock.explorer.kbs.financial import Finance
-        def fetch(ticker, statement):
-            return fetch_kbs_quarter(Finance, ticker, statement)
+    from .financials import (STATEMENTS, PROVIDERS, provider_statement,
+                             repair_quarter_cache, normalize_statement)
+    from .insights import quarterly_rows
+    repair_quarter_cache(store)
+    providers = ["KBS"] if fetch is not None else ["VCI"]
     result = {"started_at": utc(), "results": [], "failed": []}
     with process_lock(store.path / ".scanner.lock"):
         for ticker in dict.fromkeys(symbol(t) for t in tickers):
-            frames, diagnostics = [], {}
-            try:
-                for statement in ["balance_sheet","income_statement","cash_flow"]:
-                    raw = fetch(ticker, statement)
-                    if raw is None or raw.empty:
-                        raise ValueError(f"{ticker}/{statement}: không có dữ liệu.")
-                    # Timestamp archive retains original provider fields and attrs for audit.
-                    relative = f"raw/financials/{ticker}/{statement}.json"
-                    store.write_json(relative, {"rows":json.loads(raw.to_json(orient="records",force_ascii=False)),
-                                                "attrs":raw.attrs,"retrieved_at":utc()},
-                                     {"source":"KBS SDK","source_url":KBS_URL,
-                                      "sdk_attrs":raw.attrs,"units":"SDK already multiplied by 1000"})
-                    normalized, notes = normalize_quarters(raw, ticker, statement)
-                    frames.append(normalized)
-                    diagnostics[statement] = notes
-                    progress(f"{ticker}: đã lấy {statement}, {len(normalized)} chỉ tiêu-kỳ.")
-                    if delay: time.sleep(delay)
-                incoming = pd.concat(frames, ignore_index=True)
-                for period,g in incoming.groupby("period"):
-                    if g.scope.nunique() > 1:
-                        raise ValueError(f"{ticker}/{period}: phạm vi báo cáo giữa các bảng khác nhau.")
-                old = store.read("financial_quarterly.parquet")
-                if not old.empty:
-                    old = old.loc[~((old.symbol == ticker) & old.period.isin(incoming.period.unique()))]
-                store.write("financial_quarterly.parquet", pd.concat([old,incoming],ignore_index=True),
-                            {"source": "KBS quarterly financial statements via vnstock 4.0.8",
-                             "source_url": KBS_URL, "as_of": incoming.period.max(), "units": "VND",
-                             "note": "BS là tại thời điểm; KQKD/CFO chưa xác minh riêng quý hay lũy kế. Không cộng TTM, không tính ROE quý hoặc tự dùng EPS."})
-                result["results"].append({"symbol": ticker, "rows": len(incoming), "periods": sorted(incoming.period.unique().tolist()),
-                                          "diagnostics": diagnostics})
-            except SystemExit:
-                result["failed"].append({"symbol":ticker,"error":"Giới hạn API: chờ ít nhất 60 giây và chạy lại."})
-                break
-            except Exception as exc:
-                result["failed"].append({"symbol": ticker, "error": str(exc)[:500]})
-                progress(f"{ticker}: {exc}")
-            atomic_json(store.path / "financial-run.json", result)
+            errors, success, limited = [], False, False
+            for provider in providers:
+                frames, diagnostics = [], {}
+                try:
+                    for statement in STATEMENTS:
+                        raw = fetch(ticker, statement) if fetch else provider_statement(ticker, statement, "quarter", provider)
+                        if raw is None or raw.empty:
+                            raise ValueError(f"{ticker}/{statement}: không có dữ liệu.")
+                        relative = f"raw/financials/{ticker}/{statement}.json" if provider == "KBS" else f"raw/financials/{ticker}/{provider}/quarter/{statement}.json"
+                        store.write_json(relative, {"rows": json.loads(raw.to_json(orient="records", force_ascii=False)),
+                            "attrs": raw.attrs, "retrieved_at": utc()},
+                            {"source": provider + " SDK", "source_url": PROVIDERS[provider], "units": "SDK monetary values in VND"})
+                        normalized, notes = normalize_statement(raw, ticker, statement, provider=provider)
+                        frames.append(normalized)
+                        diagnostics[statement] = notes
+                        progress(f"{ticker}: đã lấy {statement} từ {provider}, {len(normalized)} chỉ tiêu-kỳ.")
+                        if delay: time.sleep(delay)
+                    incoming = pd.concat(frames, ignore_index=True)
+                    for period, g in incoming.groupby("period"):
+                        if g.scope.nunique() > 1:
+                            raise ValueError(f"{ticker}/{period}: phạm vi báo cáo giữa các bảng khác nhau.")
+                    # Commit only after all three requests succeed. Preserve a
+                    # cached cash-flow period absent from the incoming source.
+                    with store.transaction():
+                        old = store.read("financial_quarterly.parquet")
+                        if not old.empty:
+                            if not {"statement", "scope"} <= set(old):
+                                raise ValueError("Cache quý chưa đủ cấu trúc; giữ bản cũ.")
+                            keys = set(zip(incoming.period, incoming.statement))
+                            old_keys = pd.Series(list(zip(old.period, old.statement)), index=old.index)
+                            retained = old.loc[(old.symbol == ticker) & old.period.isin(incoming.period.unique()) & ~old_keys.isin(keys)]
+                            combined = pd.concat([retained, incoming], ignore_index=True)
+                            if any(g.scope.nunique() > 1 or g.source_url.nunique() > 1 for _, g in combined.groupby("period")):
+                                raise ValueError("Không ghép các bảng khác nguồn/phạm vi trong cùng kỳ.")
+                            replaced = old.loc[(old.symbol == ticker) & old_keys.isin(keys)]
+                            if not replaced.empty:
+                                store.write(f"backups/quarterly/{ticker}.parquet", replaced,
+                                            {"source": "Original quarterly rows before provider update"})
+                            old = old.loc[~((old.symbol == ticker) & old_keys.isin(keys))]
+                        store.write("financial_quarterly.parquet", pd.concat([old, incoming], ignore_index=True),
+                            {"source": "Quarterly statements; see source_url per row", "source_url": PROVIDERS[provider],
+                             "normalization_version": 2, "as_of": incoming.period.max(), "units": "VND",
+                             "note": "BS tại thời điểm; KQKD/CFO chưa xác minh riêng quý hay lũy kế. Không tính TTM hoặc ROE quý."})
+                    coverage = quarterly_rows(incoming, ticker)
+                    result["results"].append({"symbol": ticker, "provider": provider, "rows": len(incoming),
+                        "periods": sorted(incoming.period.unique().tolist()), "diagnostics": diagnostics,
+                        "missing_by_period": {r["period"]: r["missing_fields"] for r in coverage if r["missing_fields"]},
+                        "fallback_errors": errors})
+                    success = True
+                    break
+                except SystemExit:
+                    errors.append("Giới hạn API: chờ hết hạn mức rồi chạy lại.")
+                    limited = True
+                    break
+                except Exception as exc:
+                    errors.append(provider + ": " + str(exc)[:300])
+                    progress(f"{ticker}: {errors[-1]}")
+            if not success:
+                result["failed"].append({"symbol": ticker, "error": "; ".join(errors)})
+            if limited: break
+    result["status"] = "partial" if result["failed"] or any(r.get("missing_by_period") for r in result["results"]) else "complete"
     result["finished_at"] = utc()
     atomic_json(store.path / "financial-run.json", result)
     return result
+
 
 def init_profiles(store):
     config = json.loads((ROOT / "config/watchlist.json").read_text(encoding="utf-8"))

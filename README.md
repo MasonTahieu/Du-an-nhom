@@ -6,7 +6,7 @@ StockInsight là ứng dụng nghiên cứu cổ phiếu Việt Nam chạy trên
 
 > **Phạm vi hướng dẫn:** bản StockInsight đã tích hợp kho BCTC năm Tumiqa, chức năng **“Nạp / cập nhật mã này”**, khung nạp dữ liệu có thể thu gọn và bản sửa mã hóa UTF-8 trên Windows. Nếu GitHub đang chứa bản source cũ hơn, một số tên chức năng có thể khác.
 >
-> **Lưu ý:** Hướng dẫn bên dưới giả định người đăng GitHub đã commit đủ mã nguồn, thư mục `data/submission/`, `data/sample/`, `assets/fonts/`, file cấu hình và các script `.cmd` của dự án. Link GitHub cụ thể do chủ dự án cung cấp.
+> **Lưu ý:** Repository chính thức của dự án: [MasonTahieu/Du-an-nhom](https://github.com/MasonTahieu/Du-an-nhom). Bản giao diện mới sử dụng **một bộ dữ liệu local**, tự bổ sung dữ liệu thực tế VCB/FPT/HPG đã đóng gói khi mở lần đầu. Dữ liệu demo không được nhập vào local.
 
 ## 1. Yêu cầu hệ thống
 
@@ -35,11 +35,11 @@ Mở PowerShell, di chuyển đến thư mục muốn lưu rồi chạy:
 
 ```powershell
 cd D:\
-git clone <URL_GITHUB_CUA_DU_AN>
-cd <TEN_THU_MUC_DU_AN>
+git clone https://github.com/MasonTahieu/Du-an-nhom.git
+cd Du-an-nhom
 ```
 
-Thay `<URL_GITHUB_CUA_DU_AN>` bằng URL **Clone HTTPS** trên nút **Code** của GitHub (ví dụ có đuôi `.git`), và thay `<TEN_THU_MUC_DU_AN>` bằng tên thư mục được tạo sau khi clone. **Đây là chỗ điền thông tin, không phải lệnh để chạy nguyên văn.**
+Đây là URL Clone HTTPS của repository đã xác minh. Nếu đổi tên repository trên GitHub, hãy lấy lại URL trong nút **Code**.
 
 Nếu clone repo riêng tư, bạn cần được cấp quyền truy cập GitHub tương ứng.
 
@@ -107,25 +107,25 @@ Nhấp đúp **`Tat-Ung-Dung.cmd`** để dừng tiến trình server do script 
 
 Sau khi mở giao diện:
 
-1. Ở mục **Bộ dữ liệu**, chọn **“Bộ thực tế cố định · VCB, FPT, HPG”** (bản mới thường chọn sẵn).
-2. Ở mục **Doanh nghiệp**, chọn **VCB**, **FPT** hoặc **HPG**.
+1. Mở ứng dụng. **Lần đầu**, hệ thống tự đưa những phần dữ liệu thực tế VCB/FPT/HPG còn thiếu từ `data/submission/` sang `data/local/`. Không cần bấm nút hoặc có Internet; không ghi đè dữ liệu cá nhân đang có.
+2. Ở mục **Doanh nghiệp**, chọn **VCB**, **FPT** hoặc **HPG**. Giao diện **không còn ô chọn ba bộ dữ liệu**.
 3. Bấm **“Xem phân tích”**.
 4. Dùng thanh điều hướng bên trái để xem: tổng quan, vĩ mô và ngành, giá/giao dịch, tài chính, so sánh và tin tức, định giá và rủi ro.
 5. Bấm **“Xuất báo cáo PDF”** khi cần tạo báo cáo từ dữ liệu đã lưu.
 
-**Phân biệt ba chế độ dữ liệu:**
+**Cơ chế dữ liệu thống nhất:**
 
-| Chế độ trên giao diện | Thư mục | Mục đích |
-|---|---|---|
-| Demo cố định | `data/sample/` | Dữ liệu mẫu để thử chức năng |
-| Bộ thực tế cố định | `data/submission/` | Dữ liệu đi kèm source, có thể dùng để trình bày VCB/FPT/HPG |
-| Dữ liệu thực tế đang cập nhật | `data/local/` | Dữ liệu do người sử dụng chủ động nạp trên máy của họ |
+| Thư mục | Vai trò |
+|---|---|
+| `data/local/` | **Bộ dữ liệu duy nhất giao diện sử dụng**, gồm dữ liệu đã nạp và phần thực tế chốt được bổ sung khi thiếu |
+| `data/submission/` | Bản thực tế đóng gói, **chỉ đọc** và giữ lại để tái hiện kết quả báo cáo đã chốt |
+| `data/sample/` | Dữ liệu mẫu **không được trộn vào local**, chỉ phục vụ kiểm thử riêng |
 
-Chế độ `submission` được thiết kế để giữ nguyên dữ liệu bản nộp. **Chỉ VCB có nhận định đã đối soát trong phạm vi được ghi ở báo cáo; FPT/HPG không mặc nhiên được coi là đã đối soát hoàn toàn.**
+Dữ liệu local có ưu tiên cao nhất. Đối với giá, giữ dòng cùng mã/ngày đã có; không gộp dữ liệu giá khác `price_basis`. Đối với BCTC, giữ toàn bộ mã/năm đã có. Các mục tin tức và vĩ mô trùng được ưu tiên giữ bản local. Kết quả hợp nhất lần đầu được ghi trong `data/local/.unified-submission-v1.json`. **Chỉ VCB có nhận định đã đối soát trong phạm vi ghi ở báo cáo; FPT/HPG chưa mặc nhiên được đối soát hoàn toàn.**
 
 ### Báo cáo PDF nằm ở đâu?
 
-- PDF xuất mới qua giao diện: thường được ghi trong **`reports/generated/`** (tên file phụ thuộc mã và chế độ dữ liệu).
+- PDF xuất mới qua giao diện: được ghi trong **`reports/generated/`**, chế độ `local`.
 - PDF VCB mẫu đã đóng gói: **`output/pdf/`**, nếu chủ repo đã đưa thư mục này lên GitHub.
 - Có thể tải PDF thông qua chức năng của giao diện khi tạo báo cáo.
 
@@ -140,7 +140,7 @@ Ví dụ bạn muốn phân tích **CTG**, **MWG** hoặc một mã khác chưa 
 3. Nếu chỉ muốn thử quy trình cơ bản, **không tích** ô bổ sung dữ liệu ở lần đầu.
 4. Bấm **“Nạp / cập nhật mã này”**.
 5. Đợi từng bước hoàn thành, xem các trạng thái `complete`, `partial`, `failed` nếu có.
-6. Sau khi nạp, chọn **“Dữ liệu thực tế đang cập nhật”**, chọn mã vừa nạp và bấm **“Xem phân tích”** (giao diện có thể tự chuyển sang chế độ này khi công việc kết thúc).
+6. Sau khi nạp, chọn mã vừa nạp và bấm **“Xem phân tích”**; giao diện luôn dùng bộ dữ liệu chung `local`.
 
 ### Nút “Nạp / cập nhật mã này” lấy gì?
 
@@ -168,7 +168,7 @@ Nếu muốn **tải trước toàn bộ 6 file BCTC năm của HSX/HNX**, nhấ
 08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd
 ```
 
-Đây là **tùy chọn**, không bắt buộc để mở ứng dụng hoặc xem các mã trong `submission`. Chức năng nạp theo mã vẫn cần lấy giá và các dữ liệu khác từ nguồn riêng.
+Đây là **tùy chọn**, không bắt buộc để mở ứng dụng hoặc xem các mã VCB/FPT/HPG đã bổ sung vào bộ dữ liệu chung. Chức năng nạp theo mã vẫn cần lấy giá và các dữ liệu khác từ nguồn riêng.
 
 > **Không cần chạy quét giá toàn thị trường** để dùng chức năng này. Các script quét toàn thị trường chỉ dành cho tác vụ nâng cao, có thể mất lâu và phụ thuộc hạn mức API.
 
@@ -183,7 +183,7 @@ StockInsight/
 ├── data/
 │   ├── sample/                   # Dữ liệu mẫu đi kèm Git
 │   ├── submission/               # Dữ liệu bản nộp cố định đi kèm Git
-│   ├── local/                    # Dữ liệu tải trên máy người dùng; không lên Git
+│   ├── local/                    # Dữ liệu chung trên máy sau khi hợp nhất; không lên Git
 │   └── reference/tumiqa/         # Cache BCTC chung; không lên Git
 ├── reports/generated/           # PDF/JSON xuất mới; không lên Git
 ├── scripts/                     # Script cài đặt / khởi chạy / thu thập
@@ -198,8 +198,8 @@ StockInsight/
 
 **Điểm cần nhớ:** `data/local/`, `data/reference/`, `logs/`, `tmp/` và các báo cáo người dùng tạo thường nằm trong `.gitignore`. Vì vậy:
 
-- Máy mới **có sẵn dữ liệu** trong `sample` và `submission` **nếu người đăng repo đã commit các thư mục đó**.
-- Máy mới **không có dữ liệu `local` và cache Tumiqa của máy cũ**. Cần nạp lại khi cần hoặc sao chép dữ liệu bằng cách riêng, nếu quyền sử dụng nguồn cho phép.
+- Máy mới có bộ dữ liệu thực tế `submission` trong repository và tự bổ sung vào `local` khi mở giao diện lần đầu. Bộ `sample` chỉ dành cho kiểm thử, không trộn với dữ liệu thực tế.
+- Máy mới **không nhận dữ liệu `local` riêng của máy cũ và cache Tumiqa của máy cũ**. Cần nạp lại các mã riêng khác VCB/FPT/HPG khi cần, hoặc chuyển dữ liệu bằng cách riêng nếu quyền sử dụng nguồn cho phép.
 - Dữ liệu mới được lưu lại và tái sử dụng trên **chính máy mới**; không tự đồng bộ ngược lên GitHub.
 - Không cần dùng database server. StockInsight lưu giá/BCTC bằng Parquet và một số loại thông tin bằng JSON.
 
@@ -296,3 +296,21 @@ Trước khi gửi link cho người khác, người quản lý dự án nên ki
 - Xem thêm `THIRD_PARTY_NOTICES.md`, `docs/SOURCES.md`, `docs/NAP_THEO_MA.md` và `docs/CHAY_BAN_NOP.md`.
 
 > **Cảnh báo sử dụng:** Đây là công cụ hỗ trợ nghiên cứu và học tập, không phải hệ thống khuyến nghị đầu tư được xác thực độc lập. Bản thân việc tải xong dữ liệu không đảm bảo mọi kỳ tài chính, ngành, giá, tin tức hoặc giả định định giá đều chính xác và đầy đủ.
+
+
+## Nâng cấp: CafeF RSS theo vĩ mô, ngành và mã cổ phiếu
+
+Mở **Nạp dữ liệu theo mã**, nhập mã (ví dụ VCB) rồi chọn **Cập nhật tin CafeF theo ngành / mã**. Lệnh chỉ cập nhật RSS, không tải lại giá hay BCTC. Tin được thu từ các nguồn RSS chính thức của CafeF được khai báo tại `config/news_feeds.json`, tối đa 25 bài mỗi kênh cho một lượt bấm. Lệnh **Nạp / cập nhật mã này** với tùy chọn BCTC quý, vĩ mô và tin tức cũng sẽ bổ sung RSS.
+
+Tin chỉ lưu tiêu đề, tóm tắt ngắn, ngày công bố và URL, không sao chép toàn văn. Một tin có thể gắn nhiều mã (`symbols`), nhiều ngành (`sectors`), phân loại `company`, `sector`, `macro` hoặc `market`. Tự phân loại được đánh dấu `auto_unverified`, phải đọc nguồn trước khi sử dụng. `data/local/news.json` lưu tin và metadata; bộ số liệu vĩ mô định lượng chính thức vẫn nằm trong `data/local/macro.json`. Mở **Vĩ mô & ngành** để xem tin vĩ mô/tin ngành, **So sánh & tin tức** để xem tin doanh nghiệp. Tin không phù hợp không được gán mặc định cho cổ phiếu.
+
+Các bài cũ có `symbol` tiếp tục đọc được; dữ liệu RSS không ghi đè tóm tắt đã đối soát. Máy mới cần chạy `01-Cai-Bo-Nap.cmd` để cài `requests`. Nếu nguồn RSS báo lỗi mạng, giới hạn truy cập hoặc đổi định dạng, bảng tiến độ hiển thị `partial`/`failed` và giữ dữ liệu đã lưu. Có thể thêm bí danh đã xác minh bằng mảng `news_aliases` trong hồ sơ doanh nghiệp tại `data/local/companies.json`. Cần ghi nguồn theo CafeF và tuân thủ điều kiện sử dụng RSS của nhà xuất bản tại https://cafef.vn/index.rss.
+
+Danh mục `config/company_sectors.json` cung cấp ánh xạ ngành **tham khảo** cho các mã phổ biến. Nếu hồ sơ doanh nghiệp đã có ngành cụ thể, chương trình ưu tiên ngành đó. Ánh xạ tham khảo không phải phân ngành niêm yết đã được kiểm chứng.
+
+
+## Sửa BCTC thiếu chỉ tiêu và tái lập trên máy mới
+
+BCTC quý mới dùng VCI; BCTC năm kiểm tra chỉ tiêu/kỳ thiếu và dữ liệu tự động đáng ngờ rồi nạp nguồn VCI thay thế khi cần. Cache quý cũ được nhận diện lại bằng bộ chuẩn hóa có phiên bản; cache KBS có cảnh báo lệch kỳ và cần nạp lại. Dữ liệu CSV nhập thủ công được giữ nguyên; không thay số thiếu bằng 0. Đã kiểm tra nạp trực tuyến SSI vào thư mục dữ liệu trống, không dựa vào cache của tác giả.
+
+Máy mới chạy `Cai-Dat.cmd`, `01-Cai-Bo-Nap.cmd`, rồi nạp qua giao diện hoặc `_python.cmd` theo hướng dẫn chi tiết trong [Sửa BCTC và tái lập](docs/SUA_BCTC_VA_TAI_LAP.md). Cần commit các file source sửa và `requirements-market.txt`; không cần đưa `data/local/` hay cache lên GitHub. Phiên bản SDK được ghim `vnstock==4.0.8`, `vnai==2.6.1`.

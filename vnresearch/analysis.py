@@ -14,8 +14,8 @@ FIELDS = {
     "current_liabilities": ["bs_no_ngan_han", "bs_tong_no_ngan_han"],
     "revenue": ["is_doanh_so_thuan", "is_doanh_thu_thuan", "is_doanh_thu_thuan_ve_hoat_dong_kinh_doanh"],
     "net_income": ["is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep", "is_lai_lo_thuan_sau_thue", "is_loi_nhuan_ke_toan_sau_thue", "is_loi_nhuan_sau_thue"],
-    "parent_income": ["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me"],
-    "cfo": ["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh"],
+    "parent_income": ["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_phan_bo_cho_chu_so_huu"],
+    "cfo": ["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh", "cf_luu_chuyen_thuan_tu_hoat_dong_kinh_doanh_chung_khoan"],
     "eps": ["is_lai_co_ban_tren_co_phieu"],
     "net_interest_income": ["is_thu_nhap_lai_thuan"],
     "operating_income": ["is_tong_thu_nhap_hoat_dong"],
@@ -55,6 +55,36 @@ SECTORS = {
         "risks": ["Giá thép giảm hoặc nguyên liệu tăng làm thu hẹp biên lợi nhuận.", "Tồn kho và đầu tư công suất gây áp lực dòng tiền.", "Rào cản thương mại có thể ảnh hưởng xuất khẩu."],
         "checks": ["Sản lượng theo tháng", "Giá thép / nguyên liệu", "Công suất mới"],
     },
+    "securities": {
+        "label": "Dịch vụ chứng khoán", "context": "Hoạt động môi giới, cho vay ký quỹ và tự doanh chịu ảnh hưởng từ thanh khoản và biến động thị trường.",
+        "drivers": ["Thanh khoản và giá trị giao dịch thị trường", "Dư nợ margin và chi phí vốn", "Doanh thu môi giới, tự doanh, tư vấn"],
+        "risks": ["Thị trường giảm thanh khoản khiến phí môi giới giảm.", "Rủi ro giá tài sản tự doanh và dư nợ margin."],
+        "checks": ["Thị phần môi giới", "Dư nợ margin", "Doanh thu tự doanh", "An toàn vốn"],
+    },
+    "real_estate": {
+        "label": "Bất động sản", "context": "Phụ thuộc lãi suất, pháp lý dự án, khả năng huy động vốn và khả năng hấp thụ của thị trường.",
+        "drivers": ["Lãi suất và tín dụng bất động sản", "Tiến độ pháp lý và bàn giao dự án", "Dòng tiền bán hàng và nợ vay"],
+        "risks": ["Chậm pháp lý hoặc bàn giao dự án.", "Áp lực đáo hạn nợ vay và dòng tiền."],
+        "checks": ["Backlog", "Hàng tồn kho", "Người mua trả trước", "Nợ vay"],
+    },
+    "retail": {
+        "label": "Bán lẻ", "context": "Tăng trưởng tiêu dùng và thu nhập khả dụng tác động đến nhu cầu; biên lợi nhuận phụ thuộc chi phí và cơ cấu mặt hàng.",
+        "drivers": ["Sức mua và tiêu dùng nội địa", "Doanh thu trên cửa hàng", "Biên lợi nhuận gộp và hàng tồn kho"],
+        "risks": ["Sức mua yếu làm doanh thu/cửa hàng giảm.", "Áp lực tồn kho và khuyến mãi."],
+        "checks": ["SSSG", "Biên gộp", "Vòng quay hàng tồn kho"],
+    },
+    "energy": {
+        "label": "Điện và năng lượng", "context": "Sản lượng điện, chi phí đầu vào, cơ chế giá và tiến độ dự án ảnh hưởng kết quả kinh doanh.",
+        "drivers": ["Phụ tải điện", "Giá mua bán điện", "Thủy văn và chi phí nhiên liệu"],
+        "risks": ["Biến động thủy văn, nhiên liệu và cơ chế giá."],
+        "checks": ["Sản lượng điện", "Giá bán bình quân", "Nợ vay dự án"],
+    },
+    "oil_gas": {
+        "label": "Dầu khí", "context": "Giá dầu, khối lượng thăm dò khai thác và chu kỳ đầu tư ngành quyết định nhu cầu dịch vụ, sản lượng.",
+        "drivers": ["Giá dầu và khí", "Chu kỳ dự án upstream", "Hợp đồng và công suất khai thác"],
+        "risks": ["Giá năng lượng biến động và dự án đầu tư chậm tiến độ."],
+        "checks": ["Giá Brent", "Backlog", "Sản lượng", "Dòng tiền"],
+    },
     "other": {
         "label": "Chưa phân loại",
         "context": "Chưa có bộ tiêu chí ngành riêng. Cần bổ sung ngành và nhóm doanh nghiệp so sánh trước khi đưa ra kết luận.",
@@ -89,6 +119,8 @@ def financial_rows(facts, ticker, sector="other"):
         return []
     d = facts.loc[facts.symbol == ticker]
     rows = []
+    from .financials import suspect_years
+    suspect = suspect_years(facts, ticker)
     # Manual canonical fields and original repository item codes both supported.
     for period in sorted(d.period.unique()):
         p = d.loc[d.period == period]
@@ -104,12 +136,22 @@ def financial_rows(facts, ticker, sector="other"):
             row.setdefault(field, None)
         if sector == "bank":
             row["revenue"] = row["operating_income"]
+        if sector == "securities":
+            for code in ["securities_revenue", "is_doanh_thu_hoat_dong"]:
+                if code in values and pd.notna(values[code]):
+                    row["revenue"] = float(values[code])
+                    evidence["revenue"] = code
+                    break
+        if row["eps"] is not None and abs(row["eps"]) > 1e7:
+            row["eps"] = None
+        if str(period) in suspect:
+            row["quality_issues"] = ["Hai năm liền kề trùng toàn bộ chỉ tiêu nguồn; cần nạp nguồn thay thế hoặc đối soát báo cáo gốc."]
         row["evidence"] = evidence
         rows.append(row)
     for i, r in enumerate(rows):
         prev = rows[i-1] if i else {}
         # ROA/ROE need contiguous years and opening balances.
-        consecutive = bool(prev) and int(r["period"]) == int(prev["period"]) + 1
+        consecutive = bool(prev) and int(r["period"]) == int(prev["period"]) + 1 and not r.get("quality_issues") and not prev.get("quality_issues")
         avg_equity = (r["equity"] + prev["equity"]) / 2 if consecutive and r["equity"] is not None and prev["equity"] is not None else None
         avg_assets = (r["assets"] + prev["assets"]) / 2 if consecutive and r["assets"] is not None and prev["assets"] is not None else None
         r["roe"] = safe_div(r["net_income"], avg_equity)
@@ -153,7 +195,14 @@ def analyze(store: Store, ticker: str):
     companies = store.read_json("companies.json", {})
     catalogue={r["symbol"]:r for r in store.read_json("universe.json",{}).get("symbols",[])}
     profile = companies.get(ticker, {"name": catalogue.get(ticker,{}).get("name",ticker), "sector": "other", "peers": [], "description": "Chưa có hồ sơ doanh nghiệp."})
-    sector_key = profile.get("sector", "other")
+    from .peers import map_sector, suggest, compare, explain
+    selected_peers = suggest(store, ticker, profiles=companies)
+    if store.mode in {"sample", "submission"}:
+        # Frozen snapshots retain the reviewed comparison group. Live local
+        # analysis still uses the new discovery rules and richer peer metrics.
+        selected_peers = {**selected_peers, "peers": profile.get("peers", [])}
+    sector_key = map_sector(ticker, profile, store.read_json("industry_catalog.json", {}).get("symbols", {}).get(ticker, {}))
+    inferred_sector = profile.get("sector", "other") in (None, "", "other") and sector_key != "other"
     sector = SECTORS.get(sector_key, SECTORS["other"])
     prices = store.read("prices.parquet")
     p = prices.loc[prices.symbol == ticker].sort_values("date") if not prices.empty else pd.DataFrame()
@@ -183,18 +232,30 @@ def analyze(store: Store, ticker: str):
             index_r = float(aligned.benchmark.iloc[-1]/aligned.benchmark.iloc[-21]-1)
             market["relative_20"] = stock_r - index_r
     peers = []
+    peer_summary = {"period": None, "peer_count": len(selected_peers["peers"]),
+                    "peers_with_financials": 0, "medians": {}, "ranks": {},
+                    "note": selected_peers["note"], "source": selected_peers["sector_source"],
+                    "industry_name": selected_peers.get("industry_name", ""),
+                    "valuation_note": "P/B, P/E cần giá, cổ phiếu lưu hành cùng thời điểm và điều chỉnh sự kiện doanh nghiệp."}
     if financials:
-        year = financials[-1]["period"]
-        for peer in [ticker] + profile.get("peers", []):
-            rows = financial_rows(facts, peer, sector_key)
-            match = next((r for r in rows if r["period"] == year), None)
-            if match:
-                peers.append({"symbol": peer, **{k: match.get(k) for k in ["period", "revenue", "net_income", "roe", "roa", "net_margin", "debt_assets", "cir"]}})
+        peers, peer_summary = compare(facts, prices, ticker, selected_peers,
+                                      financials[-1]["period"], financial_rows, sector_key)
+    peer_notes = explain(peers, peer_summary, ticker, fmt)
+    if store.mode in {"sample", "submission"}:
+        original_fields = ("symbol", "period", "revenue", "net_income", "roe", "roa", "net_margin", "debt_assets", "cir")
+        peers = [{key: r.get(key) for key in original_fields} for r in peers if r.get("financial_available")]
     latest = financials[-1] if financials else {}
     macro_history = store.read_json("macro.json", [])
     macro = latest_macro(macro_history)
     news_all = store.read_json("news.json", [])
-    news = [n for n in news_all if n.get("symbol") in [ticker, "MARKET"]]
+    from .newsfeed import relevant_news
+    related = [(n, relevant_news(n, ticker, sector_key)) for n in news_all]
+    company_news = [n for n, (is_company, _, _) in related if is_company]
+    macro_news = [n for n, (_, is_macro, _) in related if is_macro]
+    sector_news = [n for n, (_, _, is_sector) in related if is_sector]
+    # Existing PDF renderer and coverage can still read .news; unrelated
+    # sector/market headlines are deliberately excluded.
+    news = company_news + sector_news + macro_news
     positives, concerns = [], []
     rg, pg = latest.get("revenue_growth"), latest.get("profit_growth")
     if rg is not None:
@@ -212,9 +273,16 @@ def analyze(store: Store, ticker: str):
         {"group": "Báo cáo tài chính", "status": "Có" if financials else "Thiếu", "detail": f"{len(financials)} năm; gần nhất {latest.get('period', 'chưa có')}; số liệu nguồn chưa đối soát PDF kiểm toán"},
         {"group": "Tin tức", "status": "Có" if news else "Thiếu", "detail": f"{len(news)} tin đã lưu; nội dung {', '.join(sorted(set(n.get('content_status', 'chưa trích') for n in news))) or 'chưa nạp'}"},
         {"group": "Vĩ mô", "status": "Có" if macro else "Thiếu", "detail": f"{len(macro)} chỉ tiêu; xem kỳ tham chiếu và ngày công bố"},
-        {"group": "So sánh ngành", "status": "Có" if len(peers) > 1 else "Thiếu", "detail": f"{max(0, len(peers)-1)} doanh nghiệp so sánh cùng năm"},
+        {"group": "So sánh ngành", "status": "Có" if peer_summary["peers_with_financials"] > 0 else "Thiếu", "detail": f"{peer_summary['peer_count']} mã ứng viên; {peer_summary['peers_with_financials']} mã có BCTC cùng năm"},
     ]
     coverage.append({"group":"BCTC quý", "status":"Có" if quarterly else "Thiếu", "detail": f"{len(quarterly)} kỳ; gần nhất {quarterly[-1]['period'] if quarterly else 'chưa có'}; chưa xác minh riêng quý/lũy kế"})
+    concerns += sorted({issue for r in quarterly for issue in r.get("quality_issues", [])})
+    concerns += [issue for r in financials for issue in r.get("quality_issues", [])]
+    for item in coverage:
+        if item["group"] == "Báo cáo tài chính" and any(r.get("quality_issues") for r in financials):
+            item["status"] = "Cần đối soát"
+        if item["group"] == "BCTC quý" and any(r.get("missing_fields") or r.get("quality_issues") for r in quarterly):
+            item["status"] = "Một phần"
     concerns += sector["risks"]
     if latest and price_date and int(latest["period"]) < int(price_date[:4]) and not quarterly:
         concerns.append(f"BCTC mới nhất trong bộ dữ liệu là năm {latest['period']}; chưa có BCTC quý hiện tại.")
@@ -227,10 +295,10 @@ def analyze(store: Store, ticker: str):
     # Stable data cut-off; no current-clock values in an offline analysis.
     as_of = max([x for x in [price_date] + [m.get("published_at") for m in macro] + [n.get("published_at", "")[:10] for n in news] if x], default=latest.get("period", ""))
     result = {"symbol": ticker, "mode": store.mode, "as_of": as_of, "profile": profile,
-            "sector": {"key": sector_key, **sector}, "market": market,
+            "sector": {"key": sector_key, **sector, **({"is_provisional": True} if inferred_sector else {})}, "market": market,
             "prices": p[["date", "close", "volume"]].to_dict("records") if not p.empty else [],
-            "financials": financials, "quarterly_financials": quarterly, "peers": peers, "macro": macro, "news": news,
-            "macro_history": macro_history, "macro_analysis": explain_macro(macro,sector_key,fmt), "peer_analysis": explain_peers(peers,ticker,fmt),
+            "financials": financials, "quarterly_financials": quarterly, "peers": peers, "macro": macro, "news": news, "company_news": company_news, "sector_news": sector_news, "macro_news": macro_news,
+            "macro_history": macro_history, "macro_analysis": explain_macro(macro,sector_key,fmt), "peer_analysis": peer_notes, "peer_summary": peer_summary, "peer_selection": selected_peers,
             "exchange_rates":store.read_json("exchange_rates.json",[]),
             "coverage": coverage, "opportunity": {"conclusion": conclusion(latest,market,valu),
             "positives": positives or ["Chưa đủ dữ liệu để xác định luận điểm tích cực."],
@@ -241,6 +309,7 @@ def analyze(store: Store, ticker: str):
                             "Không dùng CFO trước thuế của ngân hàng thay cho CFO cuối cùng.",
                             "Biến động năm hóa dùng 252 phiên; lợi suất giá không bao gồm cổ tức tiền mặt.",
                             "Tin tức là bằng chứng tham khảo, không tự suy ra khuyến nghị từ tiêu đề.",
+                            "So sánh cùng năm, trung vị chỉ dùng mã có số liệu; chưa tự tính P/B/P/E khi thiếu cơ sở cổ phiếu lưu hành.",
                             "Báo cáo mô tả bộ dữ liệu hiện có, không phải mô phỏng thông tin đã biết tại một ngày quá khứ."]}
 
     from .review import apply_review

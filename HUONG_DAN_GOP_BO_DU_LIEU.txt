@@ -1,0 +1,35 @@
+STOCKINSIGHT — BẢN VÁ GỘP THÀNH MỘT BỘ DỮ LIỆU
+====================================================
+
+Tác dụng:
+- Gỡ hộp chọn 3 chế độ khỏi giao diện.
+- Dùng data/local làm bộ dữ liệu duy nhất cho giao diện (giá, BCTC, tin, vĩ mô, PDF).
+- Trong lần mở đầu tiên sau khi cập nhật, tự đưa dữ liệu THỰC TẾ đã chốt
+  trong data/submission vào data/local nhưng KHÔNG GHI ĐÈ dữ liệu local có sẵn.
+- Không lấy dữ liệu mẫu từ data/sample vào dữ liệu thực tế.
+- Không tải Internet hoặc nạp thêm giá khi mở ứng dụng.
+- Giữ nguyên mã phân tích và biểu đồ, bản sửa charmap và khung nạp thu gọn.
+- Hai bộ dữ liệu mẫu/bản chốt vẫn được giữ trên đĩa để kiểm thử/đối chiếu,
+  nhưng người dùng chỉ nhìn thấy một bộ dữ liệu chính trên giao diện.
+
+CÁCH ÁP DỤNG TRÊN WINDOWS
+1. TẮT StockInsight bằng Tat-Ung-Dung.cmd.
+2. Sao lưu D:\Dự án 5 chiều\data\local trước khi thao tác.
+3. Giải nén ZIP vào thư mục D:\Dự án 5 chiều, chọn Yes to All.
+   Đảm bảo có vnresearch\unified.py trong thư mục dự án sau giải nén.
+4. Chạy Mo-Ung-Dung.cmd, truy cập http://127.0.0.1:8001.
+5. Đợi lần mở đầu tiên chuẩn bị dữ liệu (hoạt động offline, chỉ 1 lần).
+6. Chọn VCB/FPT/HPG hoặc nạp thêm mã theo yêu cầu. Các mã và dữ liệu
+   được đọc từ cùng data/local.
+7. Nhấn Ctrl + F5 để tải mới JavaScript/CSS nếu trình duyệt còn cache.
+
+GHI CHÚ:
+- Một lần hợp nhất được ghi nhận ở data/local/.unified-submission-v1.json.
+- Trùng mã/phiên giá: ưu tiên local. Khác price_basis thì giữ nguyên
+  toàn bộ dữ liệu giá của mã local, không trộn nguồn điều chỉnh giá.
+- Trùng mã/năm BCTC: ưu tiên toàn bộ kỳ báo cáo local.
+- Tin tức/vĩ mô: giữ nội dung local, chỉ thêm mục chưa có từ bản chốt.
+- Nhận định VCB được đối chiếu fingerprint trước khi hiển thị và có thể
+  báo "cần đối soát lại" nếu dữ liệu giá/BCTC đã thay đổi.
+- Dữ liệu local và cache tham khảo vẫn không tự đẩy lên GitHub.
+- Muốn đưa bản vá lên GitHub: git add .; git commit -m "Unify local dataset"; git push.

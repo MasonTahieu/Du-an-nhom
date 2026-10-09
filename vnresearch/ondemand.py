@@ -10,7 +10,7 @@ from . import collectors, history
 from .manual import config
 from .quality import readiness
 
-def load_one(store, ticker, *, extended=False, progress=lambda message: None):
+def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda message: None):
     ticker = symbol(ticker)
     cfg = config()
     result = {"symbol": ticker, "steps": [], "failed": []}
@@ -27,6 +27,15 @@ def load_one(store, ticker, *, extended=False, progress=lambda message: None):
             result["failed"].append({"step": label, "error": str(exc)[:500]})
             result["steps"].append({"name": label, "status": "failed"})
 
+    if news_only:
+        from .newsfeed import collect_rss_feeds
+        step("Tin RSS CafeF · tự phân loại ngành và doanh nghiệp", lambda: collect_rss_feeds(store))
+        result["coverage"] = [r for r in readiness(store)["symbols"] if r["symbol"] == ticker]
+        result["macro_count"] = len(store.read_json("macro.json", []))
+        result["status"] = "partial" if result["failed"] else "complete"
+        result["note"] = "RSS chỉ có tiêu đề, tóm tắt và URL; ngành/mã được gắn theo quy tắc, chưa đối soát."
+        return result
+
     collectors.init_profiles(store)
     catalogue = {r["symbol"]: r for r in store.read_json("universe.json", {}).get("symbols", [])}
     profiles = store.read_json("companies.json", {})
@@ -35,7 +44,16 @@ def load_one(store, ticker, *, extended=False, progress=lambda message: None):
                             "sector": "other", "peers": [],
                             "description": "Chưa xác minh phân ngành; cần bổ sung hồ sơ trước khi kết luận ngành."}
         store.write_json("companies.json", profiles, {"source": "Cấu hình và danh mục đã lưu"})
-    wanted = list(dict.fromkeys([ticker] + profiles[ticker].get("peers", [])))
+    from .peers import suggest, refresh_industry_catalog, map_sector
+    # One optional industry lookup per week; never blocks the ticker's own data.
+    # It is only triggered by explicit "Nạp/cập nhật mã", not by reading charts.
+    if not store.read_json("industry_catalog.json", {}).get("symbols", {}).get(ticker):
+        from .newsfeed import sector_for_ticker
+        if sector_for_ticker(ticker, profiles[ticker]) == "other":
+            step("Tra cứu phân ngành ICB (nếu nguồn hỗ trợ)", lambda: refresh_industry_catalog(store))
+    selection = suggest(store, ticker, profiles=profiles)
+    wanted = list(dict.fromkeys([ticker] + selection["peers"]))
+    result["peer_selection"] = selection
     for t in wanted:
         exchange = catalogue.get(t, {}).get("exchange")
         exchanges = {"HOSE": ["HSX"], "HSX": ["HSX"], "HNX": ["HNX"], "UPCOM": []}.get(exchange, ["HSX", "HNX"])
@@ -52,6 +70,9 @@ def load_one(store, ticker, *, extended=False, progress=lambda message: None):
                     errors.append(str(exc))
             raise ValueError("; ".join(errors))
         step("BCTC năm " + t + " · dùng cache nếu có", annual)
+        from .financials import repair_annual_sources
+        step("Kiểm tra / bổ sung BCTC năm " + t,
+             lambda t=t: repair_annual_sources(store, [t], first_year=cfg["first_year"], progress=progress))
 
     prices = store.read("prices.parquet")
     for t in [ticker, cfg.get("benchmark", "VNINDEX")]:
@@ -62,12 +83,14 @@ def load_one(store, ticker, *, extended=False, progress=lambda message: None):
         step("BCTC quý " + ticker, lambda: collectors.fetch_quarters(store, [ticker]))
         # Reuse bounded manual context pipeline; outer ingestion lock is already held.
         from .manual import _run
-        step("Vĩ mô và tin " + ticker, lambda: _run("context", [ticker]))
+        step("Vĩ mô và tin " + ticker, lambda: _run("context", [ticker], include_rss=False))
+        from .newsfeed import collect_rss_feeds
+        step("Tin RSS CafeF · ngành và cổ phiếu", lambda: collect_rss_feeds(store))
     coverage = readiness(store)
     result["coverage"] = [r for r in coverage["symbols"] if r["symbol"] in wanted]
     result["macro_count"] = coverage["macro_count"]
     result["status"] = "partial" if result["failed"] else "complete"
-    result["note"] = "Hoàn tất các bước đã chọn không có nghĩa báo cáo đã đủ dữ liệu hoặc được đối soát. Xem kỳ, nguồn và phần thiếu."
+    result["note"] = "Đã đề xuất "+str(len(selection["peers"]))+" mã cùng ngành. "+selection["note"]+" Hoàn tất nạp không có nghĩa dữ liệu đã được đối soát."
     return result
 
 class LoadJobs:
@@ -80,7 +103,7 @@ class LoadJobs:
         with self.lock:
             return deepcopy(self.job)
 
-    def start(self, ticker, extended=False):
+    def start(self, ticker, extended=False, news_only=False):
         ticker = symbol(ticker)
         if len(ticker) != 3:
             raise ValueError("Nhập mã cổ phiếu gồm 3 ký tự.")
@@ -90,17 +113,20 @@ class LoadJobs:
             self.job = {"id": uuid.uuid4().hex, "symbol": ticker, "status": "running",
                         "message": "Đang chuẩn bị", "started_at": datetime.now(timezone.utc).isoformat()}
             initial = deepcopy(self.job)
-        threading.Thread(target=self._work, args=(ticker, extended), daemon=True).start()
+        threading.Thread(target=self._work, args=(ticker, extended, news_only), daemon=True).start()
         return initial
 
-    def _work(self, ticker, extended):
+    def _work(self, ticker, extended, news_only=False):
         def progress(message):
             with self.lock:
                 self.job["message"] = str(message)
         try:
             store = self.store_factory()
             with process_lock(store.path / ".ingestion.lock"):
-                result = self.runner(store, ticker, extended=extended, progress=progress)
+                kwargs = {"extended": extended, "progress": progress}
+                if news_only:
+                    kwargs["news_only"] = True
+                result = self.runner(store, ticker, **kwargs)
             with self.lock:
                 self.job.update(status=result["status"], result=result, message="Đã kết thúc lượt nạp")
         except (Exception, SystemExit) as exc:

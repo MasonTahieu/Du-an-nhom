@@ -34,7 +34,10 @@ tái sử dụng nó mà không cần Internet.
 
 Có thể chạy `08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd` để tải sẵn cả HSX/HNX trước khi dùng.
 **Không cần** chạy bộ quét BCTC năm toàn thị trường. Khi nạp, những mã/năm BCTC
-đã có trong `local` sẽ không bị ghi đè; muốn thay bằng số đã đối soát thì dùng
+đã có trong `local` được giữ, trừ chuỗi nguồn tự động bị phát hiện thiếu hoặc đáng ngờ và có nguồn VCI thay thế hợp lệ; muốn thay bằng số đã đối soát thì dùng
 chức năng nhập CSV. Nạp giá và BCTC quý vẫn là các tác vụ riêng nếu người dùng yêu cầu.
 
 Xem [KHO_BCTC_TUMIQA.md](KHO_BCTC_TUMIQA.md) để hiểu dữ liệu nào lấy được và giới hạn.
+
+
+BCTC quý mới lấy từ VCI; nguồn năm dự phòng và hướng dẫn máy mới xem [Sửa BCTC và tái lập](SUA_BCTC_VA_TAI_LAP.md). CSV thủ công luôn được giữ khi nạp tự động.

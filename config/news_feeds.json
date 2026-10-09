@@ -1,0 +1,13 @@
+{
+  "policy": "Chỉ đọc RSS do CafeF công bố; lưu metadata và URL, không lưu toàn văn hay tự diễn giải thành khuyến nghị.",
+  "max_per_feed": 25,
+  "max_stored": 750,
+  "feeds": [
+    {"id": "macro", "name": "CafeF - Vĩ mô và đầu tư", "url": "https://cafef.vn/vi-mo-dau-tu.rss", "category": "macro"},
+    {"id": "bank", "name": "CafeF - Tài chính ngân hàng", "url": "https://cafef.vn/tai-chinh-ngan-hang.rss", "sector": "bank"},
+    {"id": "business", "name": "CafeF - Doanh nghiệp", "url": "https://cafef.vn/doanh-nghiep.rss", "category": "market"},
+    {"id": "equity", "name": "CafeF - Chứng khoán", "url": "https://cafef.vn/thi-truong-chung-khoan.rss", "category": "market"},
+    {"id": "property", "name": "CafeF - Bất động sản", "url": "https://cafef.vn/bat-dong-san.rss", "sector": "real_estate"},
+    {"id": "digital", "name": "CafeF - Kinh tế số", "url": "https://cafef.vn/kinh-te-so.rss", "sector": "technology"}
+  ]
+}

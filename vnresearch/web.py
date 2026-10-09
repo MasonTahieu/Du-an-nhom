@@ -43,6 +43,12 @@ def home():
     return (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 
 
+@app.post("/api/initialize-local")
+def initialize_local():
+    from .unified import unify_submission_into_local
+    return unify_submission_into_local()
+
+
 @app.get("/api/status")
 def status(mode: str = "sample"):
     store = Store(mode)
@@ -118,10 +124,13 @@ _LOAD_JOBS = LoadJobs()
 
 class LoadBody(BaseModel):
     extended: bool = False
+    news_only: bool = False
 
 @app.post("/api/load/{ticker}", status_code=202)
 def load_ticker(ticker: str, body: LoadBody):
     try:
+        if body.news_only:
+            return _LOAD_JOBS.start(ticker, body.extended, news_only=True)
         return _LOAD_JOBS.start(ticker, body.extended)
     except RuntimeError as exc:
         raise HTTPException(409, str(exc))

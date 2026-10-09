@@ -176,9 +176,12 @@ def _build_pdf(data, output):
         fields = ["assets", "equity", "operating_income" if sector["key"] == "bank" else "revenue", "net_income",
                   "roe", "roa", "cir" if sector["key"] == "bank" else "net_margin",
                   "debt_assets"] + ([] if sector["key"] == "bank" else ["cfo", "current_ratio"])
-        table(headers, [[LABELS[field]] + [fmt(r.get(field), "percent" if field in ["roe", "roa", "net_margin", "debt_assets", "cir"] else "number" if field == "current_ratio" else "billion") for r in rows] for field in fields],
+        table(headers, [["Doanh thu hoạt động" if field == "revenue" and sector["key"] == "securities" else LABELS[field]] + [fmt(r.get(field), "percent" if field in ["roe", "roa", "net_margin", "debt_assets", "cir"] else "number" if field == "current_ratio" else "billion") for r in rows] for field in fields],
               [5.6*cm] + [12*cm/len(rows)]*len(rows))
         add("Đơn vị số tiền: tỷ đồng. Tỷ lệ: %. Thanh toán hiện hành: lần. “Chưa có” không phải bằng 0.", small)
+        for r in rows:
+            for issue in r.get("quality_issues", []):
+                add(f"Năm {r['period']}: {issue}", small)
         story.append(chart(data, "financial"))
         add(f"Tăng doanh thu / thu nhập hoạt động năm {latest['period']}: {fmt(latest.get('revenue_growth'), 'percent')}. Tăng lợi nhuận sau thuế: {fmt(latest.get('profit_growth'), 'percent')}.", body)
     else:
@@ -188,13 +191,15 @@ def _build_pdf(data, output):
         story.append(PageBreak())
         add("BCTC quý theo nguồn",h2)
         qfields=[("assets","Tổng tài sản"),("equity","Vốn chủ sở hữu"),
-                 ("operating_income" if sector["key"]=="bank" else "revenue","Thu nhập hoạt động" if sector["key"]=="bank" else "Doanh thu thuần"),
+                 ("operating_income" if sector["key"]=="bank" else "securities_revenue" if sector["key"]=="securities" else "revenue","Thu nhập hoạt động" if sector["key"]=="bank" else "Doanh thu hoạt động" if sector["key"]=="securities" else "Doanh thu thuần"),
                  ("net_income","LNST"),("cfo","Dòng tiền kinh doanh")]
         selected=quarters[-4:]
         table(["Chỉ tiêu"]+[r["period"] for r in selected],
               [[label]+[fmt(r["fields"].get(key,{}).get("value"),"billion") for r in selected] for key,label in qfields],
               [5.6*cm]+[12*cm/len(selected)]*len(selected))
         add("Đơn vị: tỷ đồng. "+quarters[-1]["note"],small)
+        for issue in sorted({issue for r in quarters for issue in r.get("quality_issues", [])}):
+            add(issue, small)
     add("Phạm vi đối soát số liệu", h2)
     if review:
         add(review["limitations"],small)
@@ -207,22 +212,50 @@ def _build_pdf(data, output):
     add("Nhận định nhóm đối chiếu",h2)
     bullet(data.get("peer_analysis",[]))
     add("Doanh nghiệp so sánh cùng kỳ", h2)
+    summary = data.get("peer_summary", {})
     if data["peers"]:
-        table(["Mã", "Năm", "Doanh thu / TOI\n(tỷ đồng)", "LNST\n(tỷ đồng)", "ROE", "ROA"],
-              [[r["symbol"], r["period"], fmt(r["revenue"], "billion"), fmt(r["net_income"], "billion"), fmt(r["roe"], "percent"), fmt(r["roa"], "percent")] for r in data["peers"]],
-              [1.5*cm,1.7*cm,4.3*cm,4.3*cm,2.9*cm,2.9*cm])
-        add("Nhóm so sánh do người dùng cấu hình; quy mô, cơ cấu kinh doanh và phạm vi báo cáo có thể khác nhau. Bảng chưa đủ căn cứ để xếp hạng toàn ngành.", small)
+        add(f"Năm so sánh: {summary.get('period') or 'chưa có'}. Nhóm {summary.get('peer_count', 0)} đối thủ đề xuất, "
+            f"{summary.get('peers_with_financials', 0)} đối thủ có BCTC cùng kỳ. "
+            f"Nguồn ngành: {summary.get('source','hồ sơ tham khảo')}.", small)
+        table(["Mã", "Năm", "DT/TOI (tỷ)", "LNST (tỷ)", "Tăng LN", "ROE", "ROA"],
+              [[r["symbol"], r["period"], fmt(r.get("revenue"), "billion"),
+                fmt(r.get("net_income"), "billion"), fmt(r.get("profit_growth"), "percent"),
+                fmt(r.get("roe"), "percent"), fmt(r.get("roa"), "percent")] for r in data["peers"]],
+              [1.5*cm,1.6*cm,3.0*cm,3.0*cm,2.9*cm,2.8*cm,2.8*cm])
+        med = summary.get("medians", {})
+        if med:
+            add("Trung vị chỉ lấy từ các đối thủ có số liệu hợp lệ: ROE " + fmt(med.get("roe"), "percent") +
+                "; ROA " + fmt(med.get("roa"), "percent") +
+                "; tăng LNST " + fmt(med.get("profit_growth"), "percent") + ".", small)
+        add(summary.get("valuation_note", "P/B, P/E cần nguồn và cơ sở cổ phiếu lưu hành đồng nhất."), small)
     else:
-        add("Chưa có dữ liệu nhóm so sánh.")
-    add("Tin liên quan đã lưu", h2)
-    if data["news"]:
-        for n in sorted(data["news"], key=lambda n:n["published_at"], reverse=True)[:5]:
+        add("Chưa có BCTC của doanh nghiệp đang phân tích để lập bảng cùng kỳ.")
+    add("Nhóm doanh nghiệp được tự đề xuất theo ICB/cấu hình tham khảo; cần kiểm tra sự tương đồng mô hình kinh doanh, phạm vi BCTC và kỳ số liệu. Không coi trung vị là giá trị hợp lý của doanh nghiệp.", small)
+    add("Thông tin liên quan (RSS/bản tin đã lưu)", h2)
+    news_groups = [
+        ("Tin doanh nghiệp " + data["symbol"], data.get("company_news", [])),
+        ("Tin ngành " + data["sector"]["label"], data.get("sector_news", [])),
+        ("Tin vĩ mô", data.get("macro_news", [])),
+    ]
+    if not any(rows for _, rows in news_groups):
+        add("Chưa có tin theo ngành/mã. Có thể cập nhật RSS trong giao diện khi cần.")
+    for heading, rows in news_groups:
+        if not rows:
+            continue
+        add(heading, h2)
+        for n in sorted(rows, key=lambda item: str(item.get("published_at", "")), reverse=True)[:3]:
             add(n["title"], h2)
-            add(n["published_at"] + "  |  " + {"source_reviewed_summary":"Tóm tắt đã đối chiếu nguồn", "user_reviewed":"Nội dung đã kiểm tra", "metadata_only":"Chỉ có tiêu đề / URL", "extracted_unreviewed":"Đã trích nội dung; chưa đối soát"}.get(n.get("content_status"), "Nội dung do người dùng nhập"), small)
-            add(n.get("summary") or "Chỉ có tiêu đề và URL; chưa đánh giá nội dung bài viết.")
+            status = {
+                "rss_metadata": "Theo CafeF · tin RSS, tự phân loại chưa đối soát",
+                "source_reviewed_summary": "Tóm tắt đã đối chiếu nguồn",
+                "user_reviewed": "Nội dung đã kiểm tra",
+                "metadata_only": "Chỉ có tiêu đề / URL",
+                "extracted_unreviewed": "Đã trích nội dung; chưa đối soát",
+            }.get(n.get("content_status"), "Thông tin chưa đối soát")
+            add(str(n.get("published_at", "")) + " | " + status, small)
+            add(n.get("summary") or "Chỉ có tiêu đề và URL, cần đọc nội dung gốc.")
             add(n["url"], small)
-    else:
-        add("Chưa nạp tin tức. Hãy nhập tin có URL, ngày công bố và nội dung đã kiểm tra.")
+    add("Tin RSS chỉ cung cấp bối cảnh; mọi kết luận đầu tư cần đối chiếu báo cáo và nguồn gốc.", small)
     chapter(6, "Cơ hội, định giá và rủi ro")
     add(data["opportunity"]["conclusion"], h2)
     bullet(data["opportunity"]["positives"])

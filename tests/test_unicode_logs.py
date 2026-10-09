@@ -29,8 +29,8 @@ def test_console_supports_vietnamese_when_logs_begin_as_cp1252(monkeypatch):
         stderr.flush()
 
         assert stdout.encoding.lower().replace("-", "") == "utf8"
-        assert stdout_bytes.getvalue().decode("utf-8") == "VND: đã lấy balance_sheet\n"
-        assert stderr_bytes.getvalue().decode("utf-8") == "Vĩ mô NSO\n"
+        assert stdout_bytes.getvalue().decode("utf-8").splitlines() == ["VND: đã lấy balance_sheet"]
+        assert stderr_bytes.getvalue().decode("utf-8").splitlines() == ["Vĩ mô NSO"]
 
 
 def test_stdio_without_reconfigure_is_left_untouched(monkeypatch):

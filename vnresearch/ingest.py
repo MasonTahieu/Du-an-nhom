@@ -101,6 +101,7 @@ def validate_financials(d):
 
 def import_financials(store, csv_path, *, bootstrap=False):
     d = validate_financials(pd.read_csv(csv_path, dtype={"period": str}))
+    d["ingestion_origin"] = "manual_csv"
     old = store.read("financials.parquet")
     if not old.empty:
         # Replace whole symbol/year to avoid stale items or mixing report scopes.

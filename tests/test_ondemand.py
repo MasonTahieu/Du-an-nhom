@@ -4,6 +4,14 @@ from vnresearch.storage import Store
 from vnresearch import ondemand
 from vnresearch.locking import process_lock
 
+@pytest.fixture(autouse=True)
+def isolated_annual_repair(monkeypatch):
+    from vnresearch import financials, peers
+    monkeypatch.setattr(peers, "suggest", lambda *a, **k: {"peers": [], "note": "", "sector_source": "test"})
+    monkeypatch.setattr(peers, "refresh_industry_catalog", lambda *a, **k: {})
+    monkeypatch.setattr(financials, "repair_annual_sources", lambda *a, **k: {"status": "complete"})
+
+
 def test_unknown_exchange_falls_back_and_history_partial_is_not_success(tmp_path, monkeypatch):
     s=Store("local",tmp_path)
     monkeypatch.setattr(ondemand.collectors,"init_profiles",lambda store: None)

@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 let dataset=null, active="overview", loadVersion=0, catalogue=[];
 const esc = value => String(value ?? "").replace(/[&<>"']/g, x => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));
 const number = (v,d=1) => v==null ? "Chưa có" : Number(v).toLocaleString("vi-VN",{maximumFractionDigits:d});
-const contentStatus = value => ({source_reviewed_summary:"Tóm tắt đã đối chiếu nguồn",user_reviewed:"Nội dung đã kiểm tra",metadata_only:"Chỉ có tiêu đề / URL",extracted_unreviewed:"Đã trích nội dung · chưa đối soát"}[value] || "Nội dung do người dùng nhập");
+const contentStatus = value => ({rss_metadata:"RSS metadata · chưa kiểm chứng",source_reviewed_summary:"Tóm tắt đã đối chiếu nguồn",user_reviewed:"Nội dung đã kiểm tra",metadata_only:"Chỉ có tiêu đề / URL",extracted_unreviewed:"Đã trích nội dung · chưa đối soát"}[value] || "Nội dung do người dùng nhập");
 const pct = v => v==null ? "Chưa có" : number(v*100)+"%";
 const money = v => v==null ? "Chưa có" : number(v,0)+" đ";
 const billion = v => v==null ? "Chưa có" : number(v/1e9);
@@ -46,7 +46,7 @@ function financialChart(rows){
  return svg+'</svg><div class="legend"><span><i style="background:#125b86"></i>Doanh thu / thu nhập hoạt động</span><span><i style="background:#54b1ab"></i>LNST</span></div>';
 }
 function coverage(d){return table(["Nhóm dữ liệu","Trạng thái","Phạm vi"],d.coverage.map(r=>[r.group,r.status,r.detail]));}
-function hero(d){return '<div class="hero"><div class="ticker-title"><div class="ticker-box">'+esc(d.symbol)+'</div><div><h2>'+esc(d.profile.name)+'</h2><div class="muted">'+esc(d.sector.label)+" · Giá cuối phiên "+esc(d.market.date||"chưa có")+'</div></div></div><span class="chip">'+(d.mode==="sample"?"DEMO CỐ ĐỊNH":d.mode==="submission"?"BẢN THỰC TẾ CỐ ĐỊNH":"DỮ LIỆU CÁ NHÂN")+"</span></div>";}
+function hero(d){return '<div class="hero"><div class="ticker-title"><div class="ticker-box">'+esc(d.symbol)+'</div><div><h2>'+esc(d.profile.name)+'</h2><div class="muted">'+esc(d.sector.label)+" · Giá cuối phiên "+esc(d.market.date||"chưa có")+'</div></div></div><span class="chip">'+("DỮ LIỆU CHUNG")+"</span></div>";}
 function reviewView(d){return d.review?card("Đối soát chỉ tiêu trọng yếu",table(["Chỉ tiêu / kỳ","Giá trị","Đối chiếu"],d.review.audit.map(r=>[r.metric+" · "+r.period,r.value,r.status+" · "+r.source+" · "+r.location]))+hint(d.review.limitations)+d.review.sources.map(s=>"<p>"+esc(s.id)+" · "+link(s.url,s.title)+"</p>").join("")):"";}
 function overview(d){
  const m=d.market,f=d.financials.at(-1)||{};
@@ -57,10 +57,20 @@ function overview(d){
  card("Rủi ro cần theo dõi",list(d.opportunity.risks.slice(0,4)))+"</div>"+
  card("Mức độ đầy đủ của dữ liệu",coverage(d))+reviewView(d);
 }
+function newsCards(rows){
+ if(!rows?.length)return empty("Chưa có tin phù hợp trong bộ đã lưu. Bấm cập nhật tin CafeF trong khung nạp dữ liệu.");
+ const seen=new Set();
+ const recent=rows.slice().sort((a,b)=>String(b.published_at||"").localeCompare(String(a.published_at||"")))
+  .filter(n=>{if(!n.url||seen.has(n.url))return false;seen.add(n.url);return true;}).slice(0,10);
+ return recent.map(n=>
+ '<article class="news-item"><h3>'+link(n.url,n.title)+'</h3><div class="meta">'+esc(n.published_at||"Chưa rõ ngày")+' · '+esc(n.source||"Nguồn đã lưu")+' · '+esc((n.symbols||[n.symbol]).filter(x=>x&&x!=="MARKET").join(", "))+' · '+esc(contentStatus(n.content_status))+'</div>'+(n.summary?'<p>'+esc(n.summary)+'</p>':"")+'<small class="news-classification">'+esc(n.category||"chưa phân loại")+' · '+esc((n.sectors||[]).join(", "))+' · '+esc(n.classification_status==="auto_unverified"?"Tự phân loại · chưa đối soát":"Nội dung lưu trước đó")+'</small></article>').join("");
+}
 function macro(d){return (d.review?card("Vĩ mô → ngân hàng",list(d.review.macro_to_bank)):"")+(d.macro_analysis?.length?card("Nhận định từ số liệu đã lưu",list(d.macro_analysis.map(r=>r.text))):"")+(d.exchange_rates?.length?card("Tỷ giá niêm yết Vietcombank",table(["Đồng tiền","Mua tiền mặt","Mua chuyển khoản","Bán","Thời điểm nguồn"],d.exchange_rates.map(r=>[r.currency,number(r.buy,0),number(r.transfer,0),number(r.sell,0),r.source_time]))+hint("Đơn vị VND/ngoại tệ. Đây là tỷ giá niêm yết của ngân hàng.")):"")+card("Bối cảnh kinh tế",d.macro.length?table(["Chỉ tiêu","Giá trị","Kỳ tham chiếu","So sánh","Công bố"],d.macro.map(r=>[r.label,number(r.value,2)+" "+r.unit,r.period,r.basis,r.published_at]))+hint("Số liệu có kỳ tham chiếu riêng. Mỗi chỉ tiêu giữ URL nguồn; không dùng ngày thu thập thay ngày công bố."):empty("Chưa nạp dữ liệu vĩ mô."))+
  '<div class="two-col">'+card("Tác động đến "+d.sector.label,"<p>"+esc(d.sector.context)+"</p>"+list(d.sector.drivers))+
  card("Chỉ tiêu cần kiểm tra",'<div class="checklist">'+d.sector.checks.map(x=>"<span>"+esc(x)+"</span>").join("")+"</div>"+hint("Quan hệ vĩ mô → ngành là diễn giải định tính. Chưa định lượng lợi nhuận hoặc mức giá từ những chỉ tiêu này."))+"</div>"+
- card("Nguồn vĩ mô",d.macro.map(r=>'<div class="source-item">'+esc(r.label)+" · "+link(r.source_url,"Mở nguồn")+"</div>").join(""));
+ card("Tin kinh tế vĩ mô · RSS",newsCards(d.macro_news)+hint("Tin RSS là bối cảnh định tính, không phải số liệu GDP/CPI có thể dùng trực tiếp."))+
+ card("Tin theo ngành "+d.sector.label,newsCards(d.sector_news)+hint("Liên quan theo từ khóa ngành; cần đọc nguồn gốc để xác minh."))+
+ card("Nguồn chỉ tiêu vĩ mô chính thức",d.macro.length?d.macro.map(r=>'<div class="source-item">'+esc(r.label)+" · "+link(r.source_url,"Mở nguồn")+"</div>").join(""):empty("Chưa có số liệu vĩ mô từ nguồn chính thức."));
 }
 function market(d){const m=d.market;return '<div class="grid">'+metric("Giá cuối phiên",money(m.close),m.date||"")+metric("MA20",money(m.ma20),"Trung bình 20 phiên")+metric("MA50",money(m.ma50),"Trung bình 50 phiên")+metric("Biến động năm hóa",pct(m.volatility),"Lợi suất ngày × căn 252")+"</div>"+
  card("Lịch sử giá",lineChart(d.prices),"Đơn vị: nghìn đồng / cổ phiếu")+
@@ -68,20 +78,40 @@ function market(d){const m=d.market;return '<div class="grid">'+metric("Giá cu�
  card("Hiệu suất và phương pháp",table(["Thước đo","Kết quả"],[["20 phiên",pct(m.return_20)],["Chênh lệch với VN-Index (điểm %)",pct(m.relative_20)],["Sụt giảm lớn nhất trong khoảng đã lưu",pct(m.drawdown)],["Khối lượng trung bình tối đa 20 phiên",number(m.volume_20,0)],["Số phiên được lưu",m.rows],["Cơ sở giá",m.price_basis==="kbs_provider"?"Theo nguồn KBS; chưa xác minh điều chỉnh":m.price_basis||"Chưa có"]])+hint("Giá lịch sử / EOD; không phải realtime. Nguồn có thể điều chỉnh lại lịch sử khi có sự kiện cổ phiếu. Không cộng cổ tức tiền mặt vào lợi suất."));
 }
 function financials(d){const rows=d.financials,bank=d.sector.key==="bank";if(!rows.length)return quarterlyView(d)+empty("Chưa có dữ liệu BCTC năm.");
- const fields=[["assets","Tổng tài sản",billion],["equity","Vốn chủ sở hữu",billion],[bank?"operating_income":"revenue",bank?"Thu nhập hoạt động":"Doanh thu thuần",billion],["net_income","Lợi nhuận sau thuế",billion],["roe","ROE",pct],["roa","ROA",pct],["revenue_growth","Tăng doanh thu / TOI",pct],["profit_growth","Tăng LNST",pct],...(bank?[["cir","CIR",pct]]:[["net_margin","Biên lợi nhuận ròng",pct],["cfo","Dòng tiền kinh doanh",billion],["current_ratio","Thanh toán hiện hành (lần)",number]]),["debt_assets","Nợ phải trả / tài sản",pct]];
- return quarterlyView(d)+card("Tài chính theo năm",table(["Chỉ tiêu",...rows.map(r=>r.period)],fields.map(([key,label,fn])=>[label,...rows.map(r=>fn(r[key]))]))+hint("Số tiền: tỷ đồng. ROA/ROE dùng bình quân đầu-cuối năm. Thiếu dữ liệu là “Chưa có”, không thay bằng 0."))+
+ const fields=[["assets","Tổng tài sản",billion],["equity","Vốn chủ sở hữu",billion],[bank?"operating_income":"revenue",bank?"Thu nhập hoạt động":d.sector.key==="securities"?"Doanh thu hoạt động":"Doanh thu thuần",billion],["net_income","Lợi nhuận sau thuế",billion],["roe","ROE",pct],["roa","ROA",pct],["revenue_growth","Tăng doanh thu / TOI",pct],["profit_growth","Tăng LNST",pct],...(bank?[["cir","CIR",pct]]:[["net_margin","Biên lợi nhuận ròng",pct],["cfo","Dòng tiền kinh doanh",billion],["current_ratio","Thanh toán hiện hành (lần)",number]]),["debt_assets","Nợ phải trả / tài sản",pct]];
+ return quarterlyView(d)+rows.filter(r=>r.quality_issues?.length).map(r=>card("Cần đối soát năm "+esc(r.period),list(r.quality_issues))).join("")+card("Tài chính theo năm",table(["Chỉ tiêu",...rows.map(r=>r.period)],fields.map(([key,label,fn])=>[label,...rows.map(r=>fn(r[key]))]))+hint("Số tiền: tỷ đồng. ROA/ROE dùng bình quân đầu-cuối năm. Thiếu dữ liệu là “Chưa có”, không thay bằng 0."))+
  card("Doanh thu và lợi nhuận",financialChart(rows),"Tỷ đồng · xem bảng số liệu để phân biệt dữ liệu thiếu")+
  card("Lưu ý về dữ liệu nguồn","<p>BCTC năm được lấy từ bộ Parquet tham khảo hoặc file đã nhập. Phạm vi hợp nhất/riêng lẻ chưa được đối soát bản kiểm toán. Cần cập nhật quý hiện tại, xác minh đơn vị và sự kiện cổ phiếu trước khi sử dụng trong định giá.</p>"+list(d.methodology.slice(0,3)));
 }
-function industry(d){return (d.review?card("Ngành ngân hàng → VCB",list(d.review.bank_to_company)):"")+card("Nhận định nhóm đối chiếu",list(d.peer_analysis||[]))+card("Doanh nghiệp so sánh",d.peers.length?table(["Mã","Năm","Doanh thu / TOI (tỷ)","LNST (tỷ)","ROE","ROA"],d.peers.map(r=>[r.symbol,r.period,billion(r.revenue),billion(r.net_income),pct(r.roe),pct(r.roa)]))+hint("Nhóm chọn theo cấu hình; không đại diện toàn ngành. So sánh cùng năm, cần kiểm tra khác biệt quy mô và phạm vi báo cáo."):empty("Chưa có dữ liệu nhóm so sánh."))+
- card("Tin liên quan đã lưu",d.news.length?d.news.slice().sort((a,b)=>b.published_at.localeCompare(a.published_at)).map(n=>'<article class="news-item"><h3>'+link(n.url,n.title)+'</h3><div class="meta">'+esc(n.published_at)+" · "+esc(contentStatus(n.content_status))+'</div><p>'+esc(n.summary||"Chỉ có tiêu đề và URL, chưa đánh giá nội dung bài viết.")+"</p></article>").join(""):empty("Chưa nạp tin. Nhập JSON có URL, ngày công bố và nội dung đã kiểm tra."));}
+function industry(d){
+ const ps=d.peer_summary||{}, choose=d.peer_selection||{};
+ const peerRows=(d.peers||[]).map(r=>[
+    r.symbol+(r.symbol===d.symbol?" (đang phân tích)":""),r.period||"Chưa có",
+    billion(r.revenue),billion(r.net_income),pct(r.profit_growth),pct(r.roe),pct(r.roa),
+    r.financial_available?"Có BCTC":"Thiếu BCTC"]);
+ const summary=ps.period
+  ? "So sánh cùng kỳ "+esc(ps.period)+": "+number(ps.peers_with_financials,0)+"/"+number(ps.peer_count,0)+" mã đối chiếu có BCTC. Nguồn phân ngành: "+esc(ps.source||"cấu hình tham khảo")+"."
+  : "Chưa đủ BCTC của mã đang phân tích để lập bảng cùng kỳ.";
+ const groupHint=esc(choose.note||"Các đối thủ là ứng viên theo phân ngành, chưa chứng minh mô hình kinh doanh tương đồng.");
+ const tablePeers=peerRows.length?table(["Mã","Năm","Doanh thu / TOI (tỷ)","LNST (tỷ)","Tăng LN","ROE","ROA","BCTC"],peerRows):empty("Chưa xác định được doanh nghiệp cùng ngành hoặc thiếu BCTC.");
+ const median=(ps.medians||{});
+ const medianPanel=ps.period?table(["Chỉ tiêu","Trung vị các đối thủ có dữ liệu"],
+   [["ROE",pct(median.roe)],["ROA",pct(median.roa)],["Tăng trưởng lợi nhuận",pct(median.profit_growth)],["P/B, P/E","Chưa đủ dữ liệu tin cậy"]]):"";
+ return (d.review?card("Ngành ngân hàng → VCB",list(d.review.bank_to_company)):"")+
+ card("Nhóm đối chiếu tự động",'<p>'+summary+'</p>'+groupHint+hint("Các mã cùng ngành được đề xuất từ danh mục ICB đã lưu, hồ sơ hoặc ánh xạ tham khảo. Không tự lấy tin RSS làm căn cứ phân ngành."))+
+ card("Doanh nghiệp so sánh",tablePeers+hint("Số liệu cùng năm. Ô thiếu được giữ trống. P/E, P/B chỉ được tính khi có số cổ phiếu cùng thời điểm, kiểm tra sự kiện cổ phiếu."))+
+ card("Trung vị nhóm và nhận định",medianPanel+list(d.peer_analysis||[]))+
+ card("Tin riêng về "+d.symbol,newsCards(d.company_news))+
+ card("Tin cùng ngành",newsCards(d.sector_news));
+}
 function valuationView(d){const v=d.valuation;let content="<p>"+esc(v.message)+"</p>";
  if(v.available){content+="<p>"+esc(v.formula)+"</p>"+table(["Kịch bản","Hệ số","Giá theo giả định","So với giá lưu"],v.scenarios.map(r=>[r.label,number(r.multiple),money(r.target),pct(r.upside)]))+hint("Hệ số thận trọng / thuận lợi bằng 0,8× / 1,2× hệ số cơ sở. Không gán xác suất.")+"<p>"+link(v.assumptions.source_url,"Nguồn giả định")+"</p>";}
  else{content+=hint("Tải mẫu valuation.json, nhập giả định có nguồn rồi nạp bằng công cụ dòng lệnh. Báo cáo không tự ghép EPS cũ với giá đã qua chia tách để suy ra P/E.");}
  return card("Định giá theo giả định",content)+'<div class="two-col">'+card("Điểm thuận lợi",list(d.opportunity.positives))+card("Rủi ro và giới hạn",list(d.opportunity.risks))+"</div>"+card("Trước khi đưa ra kết luận",'<div class="checklist">'+d.opportunity.next_checks.map(x=>"<span>"+esc(x)+"</span>").join("")+"</div>");
 }
-function manualGuide(){return card("Nạp dữ liệu bằng CMD",'<p>Mở các file sau trong thư mục dự án. Khi xem hoặc xuất báo cáo, hệ thống chỉ đọc dữ liệu đã lưu.</p>'+table(["File CMD","Mục đích"],[["01-Cai-Bo-Nap.cmd","Cài thư viện nạp · chạy một lần"],["00-Nap-Danh-Muc-Thi-Truong.cmd","Danh mục HOSE, HNX, UPCoM"],["02-Nap-Lich-Su-Toan-Thi-Truong.cmd","Tùy chọn nâng cao · không cần cho bài nộp"],["03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd","Cập nhật giá toàn danh mục sau phiên"],["02-Nap-Lich-Su-Gia.cmd","Nạp nhóm watchlist / --symbols"],["03-Cap-Nhat-Gia.cmd","Cập nhật giá sau phiên"],["04-Nap-BCTC.cmd","BCTC năm từ cache Tumiqa, BCTC quý từ KBS"],["08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd","Tùy chọn tải sẵn 6 file BCTC năm HSX/HNX"],["05-Nap-Vi-Mo-Tin-Tuc.cmd","Vĩ mô, tỷ giá và tin theo nguồn cấu hình"],["06-Kiem-Tra-Du-Lieu.cmd","Kiểm tra bộ dữ liệu đã lưu"]])+hint("Sửa danh sách mã trong config/watchlist.json; nguồn vĩ mô và bài IR trong config/sources.json. Sau khi CMD hoàn tất, bấm Xem phân tích.")+'<button id="checkData" class="secondary">Kiểm tra dữ liệu đã lưu</button><div id="dataStatus"></div>');}
-function quarterlyView(d){const rows=d.quarterly_financials||[];if(!rows.length)return card("BCTC quý","<p>Chưa có dữ liệu quý. Chạy 04-Nap-BCTC.cmd để bổ sung.</p>");const fields=[["assets","Tổng tài sản"],["equity","Vốn chủ sở hữu"],["liabilities","Nợ phải trả"],[d.sector.key==="bank"?"operating_income":"revenue",d.sector.key==="bank"?"Thu nhập hoạt động":"Doanh thu thuần"],["net_income","LNST"],["cfo","Dòng tiền kinh doanh"]];return card("BCTC quý theo nguồn",table(["Chỉ tiêu",...rows.map(r=>r.period)],fields.map(([k,label])=>[label,...rows.map(r=>billion(r.fields[k]?.value))]))+hint("Tỷ đồng. "+rows[0].note));}
+function manualGuide(){return card("Nạp dữ liệu bằng CMD",'<p>Mở các file sau trong thư mục dự án. Khi xem hoặc xuất báo cáo, hệ thống chỉ đọc dữ liệu đã lưu.</p>'+table(["File CMD","Mục đích"],[["01-Cai-Bo-Nap.cmd","Cài thư viện nạp · chạy một lần"],["00-Nap-Danh-Muc-Thi-Truong.cmd","Danh mục HOSE, HNX, UPCoM"],["02-Nap-Lich-Su-Toan-Thi-Truong.cmd","Tùy chọn nâng cao · không cần cho bài nộp"],["03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd","Cập nhật giá toàn danh mục sau phiên"],["02-Nap-Lich-Su-Gia.cmd","Nạp nhóm watchlist / --symbols"],["03-Cap-Nhat-Gia.cmd","Cập nhật giá sau phiên"],["04-Nap-BCTC.cmd","BCTC năm từ kho tổng hợp / VCI, BCTC quý từ VCI"],["08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd","Tùy chọn tải sẵn 6 file BCTC năm HSX/HNX"],["05-Nap-Vi-Mo-Tin-Tuc.cmd","Vĩ mô, tỷ giá và tin theo nguồn cấu hình"],["06-Kiem-Tra-Du-Lieu.cmd","Kiểm tra bộ dữ liệu đã lưu"]])+hint("Sửa danh sách mã trong config/watchlist.json; nguồn vĩ mô và bài IR trong config/sources.json. Sau khi CMD hoàn tất, bấm Xem phân tích.")+'<button id="checkData" class="secondary">Kiểm tra dữ liệu đã lưu</button><div id="dataStatus"></div>');}
+function quarterlyView(d){const rows=d.quarterly_financials||[];if(!rows.length)return card("BCTC quý","<p>Chưa có dữ liệu quý. Chạy 04-Nap-BCTC.cmd để bổ sung.</p>");const fields=[["assets","Tổng tài sản"],["equity","Vốn chủ sở hữu"],["liabilities","Nợ phải trả"],[d.sector.key==="bank"?"operating_income":d.sector.key==="securities"?"securities_revenue":"revenue",d.sector.key==="bank"?"Thu nhập hoạt động":d.sector.key==="securities"?"Doanh thu hoạt động":"Doanh thu thuần"],["net_income","LNST"],["cfo","Dòng tiền kinh doanh"]];return rows.some(r=>r.quality_issues?.length)?card("Cần cập nhật BCTC quý",list([...new Set(rows.flatMap(r=>r.quality_issues||[]))]))+quarterlyTable(d,rows,fields):quarterlyTable(d,rows,fields);}
+function quarterlyTable(d,rows,fields){return card("BCTC quý theo nguồn",table(["Chỉ tiêu",...rows.map(r=>r.period)],fields.map(([k,label])=>[label,...rows.map(r=>(r.fields[k]?billion(r.fields[k].value):r.field_status?.[k]==="ambiguous"?"Cần đối soát":"Nguồn chưa có"))]))+hint("Tỷ đồng. Nguồn chưa có: thiếu chỉ tiêu/kỳ trong dữ liệu nhận được; không thay bằng 0. "+rows[0].note));}
 function dataView(d){return manualGuide()+card("Mức độ đầy đủ",coverage(d))+card("Nhập dữ liệu đã đối soát",'<div class="upload"><label>Loại dữ liệu<select id="uploadKind"><option value="financials">BCTC năm · CSV</option><option value="macro">Vĩ mô · CSV</option><option value="news">Tin tức · JSON</option></select></label><input type="file" id="uploadFile" accept=".csv,.json"><button id="upload" class="primary">Nhập file đã chọn</button></div><p><a href="/api/template/financials.csv">Mẫu BCTC</a> · <a href="/api/template/macro.csv">Mẫu vĩ mô</a> · <a href="/api/template/news.json">Mẫu tin tức</a></p>')+card("Nguồn dữ liệu",d.sources.map(r=>'<div class="source-item"><strong>'+esc(r.source||r.file)+'</strong><br>'+esc(r.file)+' · '+esc(r.as_of||"Xem kỳ từng dòng")+' · '+link(r.source_url,"Nguồn")+'</div>').join(""))+card("Phương pháp",list(d.methodology));}
 function render(){if(!dataset)return;$("content").innerHTML=hero(dataset)+({overview,macro,market,financials,industry,valuation:valuationView,data:dataView}[active])(dataset);bindData();}
 function filterTickers(previous=$("ticker").value){
@@ -99,7 +129,7 @@ document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{active=b.data
 $("tickerSearch").oninput=()=>{filterTickers();load();};
 $("refresh").onclick=async()=>{try{await loadStatus();await load();}catch(e){notice(e.message);}};$("ticker").onchange=load;$("mode").onchange=async()=>{try{await loadStatus();await load();}catch(e){notice(e.message);}};
 $("pdf").onclick=async()=>{const b=$("pdf");b.disabled=true;b.textContent="Đang tạo PDF…";try{const r=await fetch("/api/report/"+$("ticker").value+"?mode="+$("mode").value);if(!r.ok){const e=await r.json();throw Error(e.detail||"Không tạo được PDF.");}const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=$("ticker").value+"_"+$("mode").value+".pdf";a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}catch(e){notice(e.message);}finally{b.disabled=false;b.textContent="Xuất báo cáo PDF ↗";}};
-(async()=>{try{await loadStatus();await load();}catch(e){notice(e.message);$("loading").hidden=true;}})();
+(async()=>{try{await api("/api/initialize-local",{method:"POST"});await loadStatus();await load();}catch(e){notice("Không thể chuẩn bị bộ dữ liệu chung: "+e.message);$("loading").hidden=true;}})();
 
 let loadPollTimer=null, completedJob=null;
 async function pollLoad(){
@@ -108,6 +138,7 @@ async function pollLoad(){
   if(!job)return;
   const running=job.status==="running";
   $("loadTickerButton").disabled=running;
+  $("loadNewsButton").disabled=running;
   const labels={running:"Đang nạp",complete:"Hoàn tất các bước đã chọn",partial:"Nạp được một phần",failed:"Chưa hoàn tất"};
   let html="<p><strong>"+esc(job.symbol)+" · "+esc(labels[job.status]||job.status)+"</strong> · "+esc(job.message)+"</p>";
   if(job.result){
@@ -120,9 +151,9 @@ async function pollLoad(){
   if(running){loadPollTimer=setTimeout(pollLoad,1500);}
   else if(completedJob!==job.id){
    completedJob=job.id;
-   if(job.result){$("mode").value="local";$("tickerSearch").value="";await loadStatus();$("ticker").value=job.symbol;await load();}
+   if(job.result){$("mode").value="local";$("tickerSearch").value="";await loadStatus();if(catalogue.some(r=>r.symbol===job.symbol))$("ticker").value=job.symbol;await load();}
   }
- }catch(e){$("loadProgress").textContent="Không đọc được tiến độ: "+e.message+". Bấm Xem phân tích khi kết nối lại."; $("loadTickerButton").disabled=false;}
+ }catch(e){$("loadProgress").textContent="Không đọc được tiến độ: "+e.message+". Bấm Xem phân tích khi kết nối lại."; $("loadTickerButton").disabled=false;$("loadNewsButton").disabled=false;}
 }
 $("loadTickerButton").onclick=async()=>{
  const ticker=($("loadTicker").value.trim()||$("ticker").value).toUpperCase();
@@ -132,5 +163,14 @@ $("loadTickerButton").onclick=async()=>{
   await api("/api/load/"+encodeURIComponent(ticker),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({extended:$("loadExtended").checked})});
   clearTimeout(loadPollTimer); await pollLoad();
  }catch(e){notice(e.message);$("loadTickerButton").disabled=false;}
+};
+$("loadNewsButton").onclick=async()=>{
+ const ticker=($("loadTicker").value.trim()||$("ticker").value).toUpperCase();
+ if(!/^[A-Z][A-Z0-9]{2}$/.test(ticker))return notice("Nhập mã cổ phiếu gồm 3 ký tự.");
+ $("loadNewsButton").disabled=true;
+ try{
+  await api("/api/load/"+encodeURIComponent(ticker),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({news_only:true})});
+  clearTimeout(loadPollTimer);await pollLoad();
+ }catch(e){notice(e.message);$("loadNewsButton").disabled=false;}
 };
 pollLoad();
