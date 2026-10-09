@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "mode": "sample",
+  "files": {
+    "companies.json": {
+      "source": "Hồ sơ / nhóm so sánh cấu hình thủ công",
+      "source_url": "see row source_url",
+      "sha256": "82361a7512b96aa9683e621180e091692cc584b79afe1f620600e9c10855b882",
+      "bytes": 2239,
+      "rows": null,
+      "retrieved_at": "2026-10-09T06:57:38.720227+00:00"
+    },
+    "financials.parquet": {
+      "source": "vn-annual-report-miner bundled annual financials",
+      "source_url": "https://github.com/Tumiqa/vn-annual-report-miner",
+      "reference_commit": "f8cad8d7d4276cd22aee20113fe3214230daf919",
+      "as_of": "2025",
+      "units": "VND; EPS=VND/share",
+      "note": "Dữ liệu thứ cấp; phạm vi báo cáo chưa được xác nhận với bản PDF kiểm toán.",
+      "sha256": "906242a351dc4bc00cd1687552fcc21d78b1d45061e1963314f745989f4071e4",
+      "bytes": 57516,
+      "rows": 5228,
+      "retrieved_at": "2026-10-09T07:33:33.544948+00:00"
+    },
+    "prices.parquet": {
+      "source": "KBS via vnstock 4.x",
+      "source_url": "https://kbbuddywts.kbsec.com.vn",
+      "as_of": "2026-10-08",
+      "units": "VND; VNINDEX=index_points",
+      "note": "Giá theo API lịch sử KBS; chưa xác minh cơ sở điều chỉnh. Không ghép với EPS/BVPS lịch sử để suy ra PE/PB. Nguồn có thể sửa hồi tố.",
+      "sha256": "042af963051dc414f065dcf1d6603c4991b949461b2626fcef8509f430b3df53",
+      "bytes": 31996,
+      "rows": 992,
+      "retrieved_at": "2026-10-09T07:20:22.561759+00:00"
+    },
+    "macro.json": {
+      "source": "NSO (số liệu chọn và kiểm tra thủ công)",
+      "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/",
+      "as_of": "2026-10-03",
+      "sha256": "0636fc4fce409ac71aace7344e01b88577d9f21389010c08a7d7190d1fe65f0a",
+      "bytes": 1687,
+      "rows": null,
+      "retrieved_at": "2026-10-09T06:58:02.716531+00:00"
+    },
+    "news.json": {
+      "source": "IR VCB / FPT / Hòa Phát; tóm tắt có kiểm tra",
+      "source_url": "see row url",
+      "as_of": "2026-10-03",
+      "sha256": "337de160957223af6db8ed6e67197ca1cae07c846ba981d6317a273050dcedb1",
+      "bytes": 2152,
+      "rows": null,
+      "retrieved_at": "2026-10-09T06:58:02.748530+00:00"
+    },
+    "valuations.json": {
+      "source": "Chưa nạp giả định định giá",
+      "source_url": "",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "bytes": 2,
+      "rows": null,
+      "retrieved_at": "2026-10-09T06:58:02.765530+00:00"
+    }
+  }
+}

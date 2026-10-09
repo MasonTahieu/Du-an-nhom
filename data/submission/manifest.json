@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "mode": "submission",
+  "files": {
+    "prices.parquet": {
+      "source": "Bộ thực tế cố định: dữ liệu KBS / Parquet tham khảo; xem nguồn từng dòng",
+      "source_url": "https://kbbuddywts.kbsec.com.vn",
+      "as_of": "2026-10-09",
+      "units": "VND; index_points",
+      "price_basis": "kbs_provider",
+      "note": "Bổ sung từ dữ liệu local đã lưu; FPT/HPG/ELC/NKG chưa đối soát độc lập. Giữ nguyên dữ liệu VCB và VNINDEX bản chốt.",
+      "sha256": "600757b8db9e085cee1f5dc94ad658a03b4f2fa8449e8497753f55aa6719cb47",
+      "bytes": 55298,
+      "rows": 1748,
+      "retrieved_at": "2026-10-09T10:40:31.506548+00:00"
+    },
+    "financials.parquet": {
+      "source": "Bộ thực tế cố định: dữ liệu KBS / Parquet tham khảo; xem nguồn từng dòng",
+      "source_url": "https://github.com/Tumiqa/vn-annual-report-miner",
+      "reference_commit": "f8cad8d7d4276cd22aee20113fe3214230daf919",
+      "as_of": "2025",
+      "units": "VND; VND/share",
+      "note": "Bổ sung từ dữ liệu local đã lưu; FPT/HPG/ELC/NKG chưa đối soát độc lập. Giữ nguyên dữ liệu VCB và VNINDEX bản chốt.",
+      "sha256": "474b983b0d44d86361907fbdede41a3305a958c3296eb6315e30aafee0d8d855",
+      "bytes": 54349,
+      "rows": 4480,
+      "retrieved_at": "2026-10-09T10:40:31.567549+00:00"
+    },
+    "macro.json": {
+      "source": "Cục Thống kê; đối chiếu 5 chỉ tiêu 9M2026",
+      "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/",
+      "as_of": "2026-10-03",
+      "sha256": "b2960b77f97ece5b166d031c1b2e2d7707064c6e864e28954d462be062863cd8",
+      "bytes": 4598,
+      "rows": null,
+      "retrieved_at": "2026-10-09T09:10:11.801395+00:00"
+    },
+    "news.json": {
+      "source": "Tin IR đã lưu; VCB được đọc và đối chiếu ngày 09/10/2026",
+      "source_url": "https://vietcombank.com.vn/vi-VN/Trang-thong-tin-dien-tu/Articles/2026/08/17/20260812_TSC_CLTKHDQT_CongboKQKDquyII",
+      "as_of": "2026-10-09",
+      "sha256": "7aa00a802473d6163919b8bfbbec126f420b2e280dd48ae293f74be8980a9550",
+      "bytes": 1011,
+      "rows": null,
+      "retrieved_at": "2026-10-09T09:10:11.760391+00:00"
+    },
+    "companies.json": {
+      "source": "Hồ sơ cấu hình; xem source_url từng doanh nghiệp",
+      "sha256": "8649d01d4ad2d8fcd9a0e2277d6d78697568ffd2566cd917975a8f7d7c056d85",
+      "bytes": 1761,
+      "rows": null,
+      "retrieved_at": "2026-10-09T10:40:31.594548+00:00"
+    },
+    "research_reviews.json": {
+      "source": "Đối soát có phạm vi cho VCB, 09/10/2026",
+      "source_url": "https://cdn.financialreports.eu/financialreports/media/filings/67042/2026/RNS/67042_rns_2026-04-17_ec71ebc1-1e53-44c8-aa94-45a7b9d87c07.pdf",
+      "as_of": "2026-10-09",
+      "sha256": "f213410b5dad7959450e6cea911aec77c3cf3524515fdc7ff0635393633288d4",
+      "bytes": 8985,
+      "rows": null,
+      "retrieved_at": "2026-10-09T09:10:11.987389+00:00"
+    }
+  }
+}

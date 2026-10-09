@@ -1,0 +1,52 @@
+[
+  {
+    "indicator": "gdp_yoy",
+    "label": "Tăng trưởng GDP",
+    "value": 9.01,
+    "unit": "%",
+    "period": "9 tháng 2026",
+    "basis": "YoY",
+    "published_at": "2026-10-03",
+    "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+  },
+  {
+    "indicator": "cpi_yoy",
+    "label": "CPI bình quân",
+    "value": 4.52,
+    "unit": "%",
+    "period": "9 tháng 2026",
+    "basis": "YoY",
+    "published_at": "2026-10-03",
+    "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+  },
+  {
+    "indicator": "iip_yoy",
+    "label": "Sản xuất công nghiệp (IIP)",
+    "value": 12.3,
+    "unit": "%",
+    "period": "9 tháng 2026",
+    "basis": "YoY",
+    "published_at": "2026-10-03",
+    "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+  },
+  {
+    "indicator": "credit_ytd",
+    "label": "Tăng trưởng tín dụng",
+    "value": 10.89,
+    "unit": "%",
+    "period": "28/09/2026",
+    "basis": "So cuối 2025",
+    "published_at": "2026-10-03",
+    "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+  },
+  {
+    "indicator": "fdi_disbursed",
+    "label": "FDI thực hiện",
+    "value": 21.07,
+    "unit": "tỷ USD",
+    "period": "9 tháng 2026",
+    "basis": "Giá trị lũy kế",
+    "published_at": "2026-10-03",
+    "source_url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+  }
+]

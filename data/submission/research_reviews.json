@@ -1,0 +1,133 @@
+{
+  "VCB": {
+    "reviewed_at": "2026-10-09",
+    "cutoff": "Giá 08/10/2026; BCTC năm 2025; vĩ mô 9M2026; tin IR 17/08/2026",
+    "conclusion": "THEO DÕI CÓ ĐIỀU KIỆN — VCB duy trì lợi nhuận tăng, nhưng hiệu quả vốn và giá ngắn hạn chưa cải thiện đồng thời. Chưa đủ căn cứ xác định cổ phiếu đang rẻ hoặc đưa giá mục tiêu.",
+    "positives": [
+      "LNST hợp nhất 2025 đạt 35.197,940 tỷ đồng, tăng 3,97% so với 2024; tổng thu nhập hoạt động tăng 5,65%. Các khoản mục đã khớp BCTN 2025 [S2].",
+      "Vốn chủ sở hữu cuối 2025 đạt 224.558,726 tỷ đồng, tăng 14,45%; tạo thêm nền vốn cho hoạt động nhưng chưa tự chứng minh mức an toàn vốn pháp định [S2].",
+      "IR 6 tháng 2026 công bố CASA khoảng 32% và NPL 0,98%. Đây là điểm hỗ trợ giả thuyết về chi phí vốn và chất lượng tài sản; cần xác nhận bằng BCTC bán niên [S4]."
+    ],
+    "risks": [
+      "ROE bình quân hai thời điểm giảm từ 18,74% (2024) xuống 16,73% (2025), do vốn tăng nhanh hơn LNST. Cần đánh giá khả năng sử dụng phần vốn tăng thêm; không đồng nhất ROE thấp hơn với ngân hàng kém an toàn.",
+      "CIR tự tính tăng từ 33,58% lên 34,84% năm 2025; chi phí hoạt động tăng nhanh hơn thu nhập hoạt động. Rủi ro chi phí vốn và dự phòng có thể tiếp tục làm chậm tăng trưởng lợi nhuận.",
+      "Giá chốt 56.600 đồng thấp hơn MA20 58.250 và MA50 58.542 đồng; lợi suất 20 phiên là -4,07%. Đây là mô tả giá đã lưu, không phải dự báo và chưa cộng cổ tức.",
+      "CPI cao hơn có thể tạo sức ép lãi suất; tín dụng mở rộng cần đi kèm kiểm soát chất lượng tài sản. Chưa có chuỗi lãi suất, NIM và chi phí tín dụng để định lượng tác động.",
+      "Chưa có BCTC quý chuẩn hóa, chưa đối soát toàn bộ lịch sử giá/sự kiện cổ phiếu và BCTC các doanh nghiệp đối chiếu. Không dùng EPS cũ để suy ra P/E hiện tại."
+    ],
+    "next_checks": [
+      "Bổ sung BCTC bán niên/quý 2026; kiểm tra NIM, CASA, nợ nhóm 2, NPL, tỷ lệ bao phủ và chi phí dự phòng.",
+      "Kiểm tra lợi nhuận tăng có đi kèm ROE ổn định và CIR cải thiện ở các kỳ tiếp theo.",
+      "Nếu NPL hoặc dự phòng tăng đáng kể, cần hạ đánh giá triển vọng dù tăng trưởng tín dụng cao.",
+      "Đối soát số cổ phiếu sau phát hành/cổ tức; chỉ tính P/B hoặc giá mục tiêu khi có BVPS cùng cơ sở và hệ số mục tiêu có nguồn."
+    ],
+    "macro_to_bank": [
+      "GDP 9 tháng tăng 9,01% và tín dụng đến 28/09 tăng 10,89% so cuối 2025 tạo bối cảnh nhu cầu vốn mở rộng. Đây là cơ hội cho dư nợ và dịch vụ ngân hàng; tăng tín dụng không tự bảo đảm lợi nhuận nếu biên lãi hoặc chất lượng khoản vay giảm [S3].",
+      "CPI bình quân tăng 4,52% đòi hỏi theo dõi lãi suất huy động và áp lực chi phí vốn. Với ngân hàng, cần đánh giá chênh lệch tốc độ điều chỉnh lãi cho vay và huy động trước khi kết luận về NIM.",
+      "FDI thực hiện 21,07 tỷ USD và IIP tăng 12,3% là bối cảnh thuận lợi cho thanh toán, ngoại hối và tài trợ thương mại. Phần lợi ích thực tế của VCB còn phụ thuộc khách hàng, thị phần và phí dịch vụ; chưa có dữ liệu để định lượng."
+    ],
+    "bank_to_company": [
+      "VCB có lợi nhuận tăng nhưng ROE giảm trong bộ số liệu đã kiểm tra. Vì vậy luận điểm phù hợp là theo dõi khả năng chuyển nền vốn lớn hơn thành thu nhập và lợi nhuận, đồng thời giữ chất lượng tài sản.",
+      "CASA và NPL trong công bố IR 6 tháng 2026 hỗ trợ hướng theo dõi trên, nhưng số liệu công bố của doanh nghiệp cần tách khỏi kết quả tính từ BCTC năm. Kế hoạch tín dụng khoảng 13% không được trình bày như kết quả đã đạt [S4].",
+      "CTG và MBB là nhóm đối chiếu cùng năm, không đại diện toàn ngành. Chênh lệch ROE phải đọc cùng cơ cấu vốn, rủi ro tín dụng và phạm vi hợp nhất; dữ liệu peers chưa được đối soát PDF trong lần rà soát này."
+    ],
+    "audit": [
+      {
+        "metric": "Giá đóng cửa VCB",
+        "value": "56.600 VND/cổ phiếu",
+        "period": "08/10/2026",
+        "status": "Khớp giá KBS với Investing; chỉ đối chiếu phiên cuối",
+        "source": "S1",
+        "location": "Dòng 08/10/2026; chưa xác minh toàn bộ điều chỉnh lịch sử"
+      },
+      {
+        "metric": "LNST hợp nhất",
+        "value": "35.197,940 tỷ VND",
+        "period": "2025",
+        "status": "Khớp PDF BCTN công bố; gồm lợi ích không kiểm soát",
+        "source": "S2",
+        "location": "Trang in 153; trang PDF 78"
+      },
+      {
+        "metric": "Vốn chủ sở hữu hợp nhất",
+        "value": "224.558,726 tỷ VND",
+        "period": "31/12/2025",
+        "status": "Khớp tổng VCSH trong PDF",
+        "source": "S2",
+        "location": "Trang in 151; trang PDF 77"
+      },
+      {
+        "metric": "Vốn chủ sở hữu đầu kỳ",
+        "value": "196.209,168 tỷ VND",
+        "period": "31/12/2024",
+        "status": "Khớp số so sánh trong BCTN 2025",
+        "source": "S2",
+        "location": "Trang in 151; trang PDF 77"
+      },
+      {
+        "metric": "ROE tự tính",
+        "value": "16,7303%",
+        "period": "2025",
+        "status": "35.197,940 / ((196.209,168 + 224.558,726)/2)",
+        "source": "S2",
+        "location": "Bình quân hai thời điểm; có thể khác ROE ngân hàng công bố theo bình quân khác"
+      },
+      {
+        "metric": "GDP / CPI bình quân",
+        "value": "9,01% / 4,52%",
+        "period": "9 tháng 2026",
+        "status": "Khớp công bố NSO; cùng kỳ năm trước",
+        "source": "S3",
+        "location": "Mục tăng trưởng và giá cả"
+      },
+      {
+        "metric": "IIP / FDI thực hiện",
+        "value": "12,3% / 21,07 tỷ USD",
+        "period": "9 tháng 2026",
+        "status": "IIP so cùng kỳ; FDI là giá trị giải ngân",
+        "source": "S3",
+        "location": "Mục công nghiệp và đầu tư"
+      },
+      {
+        "metric": "Tăng trưởng tín dụng",
+        "value": "10,89%",
+        "period": "28/09/2026",
+        "status": "So cuối 2025; không so trực tiếp với tăng trưởng cả năm của VCB",
+        "source": "S3",
+        "location": "Mục ngân hàng"
+      },
+      {
+        "metric": "Thông tin IR VCB",
+        "value": "CASA khoảng 32%; NPL 0,98%",
+        "period": "6 tháng đầu 2026",
+        "status": "Đối chiếu bài của ngân hàng, chưa đối chiếu BCTC bán niên",
+        "source": "S4",
+        "location": "Công bố 17/08/2026; mục tiêu tín dụng 13% là kế hoạch"
+      }
+    ],
+    "sources": [
+      {
+        "id": "S1",
+        "title": "Giá KBS lưu local; đối chiếu phiên cuối với Investing",
+        "url": "https://vn.investing.com/equities/joint-stock-commercial-bank-historical-data"
+      },
+      {
+        "id": "S2",
+        "title": "BCTN Vietcombank 2025, BCTC hợp nhất; bản sao tài liệu công bố tại FinancialReports, trang PDF 77–78",
+        "url": "https://cdn.financialreports.eu/financialreports/media/filings/67042/2026/RNS/67042_rns_2026-04-17_ec71ebc1-1e53-44c8-aa94-45a7b9d87c07.pdf"
+      },
+      {
+        "id": "S3",
+        "title": "Cục Thống kê, báo cáo kinh tế xã hội 9 tháng 2026, công bố 03/10/2026",
+        "url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/"
+      },
+      {
+        "id": "S4",
+        "title": "Vietcombank, công bố KQKD quý II và 6 tháng 2026, đăng 17/08/2026",
+        "url": "https://vietcombank.com.vn/vi-VN/Trang-thong-tin-dien-tu/Articles/2026/08/17/20260812_TSC_CLTKHDQT_CongboKQKDquyII"
+      }
+    ],
+    "limitations": "Đối soát có phạm vi: giá phiên cuối; chỉ tiêu trọng yếu VCB 2024–2025; năm 2022–2023 và peers chưa kiểm tra PDF. BCTN nguồn là bản công bố được lưu trên bên thứ ba. ROE/CIR là phép tính của hệ thống. Thông tin IR không thay BCTC quý. Chưa có cơ sở định giá.",
+    "input_sha256": "23d927d83ca2e727c0a8010d1e605606fb6263872270f3c8501feec1cc601508"
+  }
+}

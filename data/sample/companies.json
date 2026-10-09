@@ -1,0 +1,80 @@
+{
+  "VCB": {
+    "name": "Ngân hàng TMCP Ngoại thương Việt Nam",
+    "sector": "bank",
+    "peers": [
+      "CTG",
+      "MBB"
+    ],
+    "description": "Ngân hàng thương mại hoạt động trong huy động vốn, tín dụng, thanh toán và dịch vụ tài chính. Phân tích tập trung vào khả năng sinh lời, chất lượng tài sản và cơ cấu nguồn vốn.",
+    "source_url": "https://www.vietcombank.com.vn"
+  },
+  "FPT": {
+    "name": "Công ty Cổ phần FPT",
+    "sector": "technology",
+    "peers": [
+      "ELC",
+      "FOX"
+    ],
+    "description": "Doanh nghiệp công nghệ với các hoạt động công nghệ thông tin, viễn thông và giáo dục. Cần theo dõi cơ cấu doanh thu theo mảng, thị trường quốc tế và khả năng chuyển lợi nhuận thành dòng tiền.",
+    "source_url": "https://fpt.com"
+  },
+  "HPG": {
+    "name": "Công ty Cổ phần Tập đoàn Hòa Phát",
+    "sector": "steel",
+    "peers": [
+      "NKG",
+      "VGS"
+    ],
+    "description": "Doanh nghiệp sản xuất thép và công nghiệp. Triển vọng phụ thuộc nhu cầu xây dựng, sản lượng, công suất và chênh lệch giá bán so với giá nguyên liệu.",
+    "source_url": "https://www.hoaphat.com.vn"
+  },
+  "CTG": {
+    "name": "Ngân hàng TMCP Công Thương Việt Nam",
+    "sector": "bank",
+    "peers": [
+      "VCB",
+      "MBB"
+    ]
+  },
+  "MBB": {
+    "name": "Ngân hàng TMCP Quân đội",
+    "sector": "bank",
+    "peers": [
+      "VCB",
+      "CTG"
+    ]
+  },
+  "ELC": {
+    "name": "Công ty Cổ phần Công nghệ - Viễn thông ELCOM",
+    "sector": "technology",
+    "peers": [
+      "FPT",
+      "FOX"
+    ]
+  },
+  "FOX": {
+    "name": "Công ty Cổ phần Viễn thông FPT",
+    "sector": "technology",
+    "peers": [
+      "FPT",
+      "ELC"
+    ]
+  },
+  "NKG": {
+    "name": "Công ty Cổ phần Thép Nam Kim",
+    "sector": "steel",
+    "peers": [
+      "HPG",
+      "VGS"
+    ]
+  },
+  "VGS": {
+    "name": "Công ty Cổ phần Ống thép Việt Đức VG PIPE",
+    "sector": "steel",
+    "peers": [
+      "HPG",
+      "NKG"
+    ]
+  }
+}

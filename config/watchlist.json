@@ -1,0 +1,65 @@
+{
+  "symbols": [
+    "VCB",
+    "FPT",
+    "HPG"
+  ],
+  "benchmark": "VNINDEX",
+  "history_start": "2025-01-01",
+  "reference_commit": "f8cad8d7d4276cd22aee20113fe3214230daf919",
+  "reference_exchange": "HSX",
+  "first_year": 2022,
+  "companies": {
+    "VCB": {
+      "name": "Ngân hàng TMCP Ngoại thương Việt Nam",
+      "sector": "bank",
+      "peers": [
+        "CTG"
+      ],
+      "source_url": "https://vietcombank.com.vn",
+      "description": "Ngân hàng Vietcombank; cần đối soát chất lượng tài sản và an toàn vốn trước khi định giá."
+    },
+    "FPT": {
+      "name": "Công ty Cổ phần FPT",
+      "sector": "technology",
+      "peers": [
+        "ELC"
+      ],
+      "source_url": "https://fpt.com",
+      "description": "Doanh nghiệp công nghệ, viễn thông và giáo dục; cần kiểm tra thay đổi phạm vi hợp nhất giữa các kỳ."
+    },
+    "HPG": {
+      "name": "Công ty Cổ phần Tập đoàn Hòa Phát",
+      "sector": "steel",
+      "peers": [
+        "NKG"
+      ],
+      "source_url": "https://hoaphat.com.vn",
+      "description": "Doanh nghiệp sản xuất thép; lợi nhuận chịu tác động của công suất, giá bán và nguyên liệu."
+    },
+    "CTG": {
+      "name": "Ngân hàng TMCP Công Thương Việt Nam",
+      "sector": "bank",
+      "peers": [
+        "VCB"
+      ],
+      "source_url": "https://vietinbank.vn"
+    },
+    "ELC": {
+      "name": "Công ty Cổ phần Công nghệ - Viễn thông ELCOM",
+      "sector": "technology",
+      "peers": [
+        "FPT"
+      ],
+      "source_url": "https://elcom.com.vn"
+    },
+    "NKG": {
+      "name": "Công ty Cổ phần Thép Nam Kim",
+      "sector": "steel",
+      "peers": [
+        "HPG"
+      ],
+      "source_url": "https://namkimgroup.vn"
+    }
+  }
+}

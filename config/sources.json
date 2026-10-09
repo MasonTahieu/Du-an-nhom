@@ -1,0 +1,13 @@
+{
+ "macro_release": {
+   "url": "https://www.nso.gov.vn/bai-top/2026/10/bao-cao-tinh-hinh-kinh-te-xa-hoi-quy-iii-va-9-thang-nam-2026/",
+   "published_at": "2026-10-03",
+   "year": 2026,
+   "period": "9M2026"
+ },
+ "articles": [
+   {"symbol":"VCB","url":"https://vietcombank.com.vn/vi-VN/Trang-thong-tin-dien-tu/Articles/2026/08/17/20260812_TSC_CLTKHDQT_CongboKQKDquyII","published_at":"2026-08-17"},
+   {"symbol":"FPT","url":"https://fpt.com/vi/tin-tuc/bo-truong-khoa-hoc-va-cong-nghe-uy-tin-giup-fpt-thanh-cong-tai-nhat-ban","published_at":"2026-10-03"},
+   {"symbol":"HPG","url":"https://www.hoaphat.com.vn/tin-tuc/hoa-phat-dat-chung-chi-xuat-khau-cap-du-ung-luc-vao-thi-truong-ba-lan.html","published_at":"2026-10-01"}
+ ]
+}

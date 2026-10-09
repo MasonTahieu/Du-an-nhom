@@ -1,0 +1,7 @@
+# Optional, installed only for manual online collection.
+-r requirements.txt
+vnstock==4.0.8
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5
+trafilatura>=2,<3
+pypdf>=6,<7

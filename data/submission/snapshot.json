@@ -1,0 +1,8 @@
+{
+  "name": "VCB FPT HPG fixed real dataset",
+  "price_cutoff": "2026-10-08",
+  "reviewed_at": "2026-10-09",
+  "reference_commit": "f8cad8d7d4276cd22aee20113fe3214230daf919",
+  "note": "VCB reviewed in stated scope. FPT, HPG and peers not independently reviewed. Prices cut off 2026-10-08.",
+  "analysis_sha256": "6bba5d7b9be3093b41c6dda07f9c60c4db4962227daef58b2b4ede5f88835381"
+}

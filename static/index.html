@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VN Equity Research</title><link rel="stylesheet" href="/static/style.css"><script defer src="/static/app.js"></script></head>
+<body>
+<aside class="sidebar"><a class="brand" href="/"><span class="brand-icon">V</span><div>VN EQUITY<span>RESEARCH WORKSPACE</span></div></a>
+<div class="side-label">KHÔNG GIAN PHÂN TÍCH</div>
+<nav id="nav"><button class="active" data-view="overview">◈ Tổng quan đầu tư</button><button data-view="macro">◎ Vĩ mô & ngành</button><button data-view="market">↗ Giá & giao dịch</button><button data-view="financials">▥ Tài chính doanh nghiệp</button><button data-view="industry">⊞ So sánh & tin tức</button><button data-view="valuation">◇ Định giá & rủi ro</button><button data-view="data">↓ Dữ liệu & hướng dẫn</button></nav>
+<div class="side-bottom"><span class="status-dot"></span> Phân tích từ dữ liệu đã lưu<p>Không tự tải dữ liệu khi xem báo cáo.</p><small>Dữ liệu local · 0.2</small></div>
+</aside>
+<main>
+<header><div><div class="eyebrow">TỪ VĨ MÔ ĐẾN CƠ HỘI DOANH NGHIỆP</div><h1>Không gian nghiên cứu</h1></div><div class="header-actions"><button id="pdf" class="primary">Xuất báo cáo PDF ↗</button></div></header>
+<section class="toolbar"><label>Bộ dữ liệu<select id="mode"><option value="sample">Demo cố định · chạy offline</option><option value="submission" selected>Bộ thực tế cố định · VCB, FPT, HPG</option><option value="local">Dữ liệu thực tế đang cập nhật</option></select></label><label>Tìm cổ phiếu<input id="tickerSearch" type="search" placeholder="Mã hoặc tên doanh nghiệp" aria-label="Tìm cổ phiếu"></label><label>Doanh nghiệp<select id="ticker"></select></label><button id="refresh" class="secondary">Xem phân tích</button><div id="verified" class="badge"></div></section>
+<details class="card load-panel" id="loadPanel">
+<summary class="load-panel-summary">
+  <span class="load-panel-heading"><strong>Nạp dữ liệu theo mã</strong><small>Chỉ mở khi cần tải hoặc cập nhật dữ liệu</small></span>
+  <span id="loadPanelStatus" class="load-panel-status" role="status" aria-live="polite">Sẵn sàng nạp</span>
+  <span class="load-panel-chevron" aria-hidden="true">⌄</span>
+</summary>
+<div class="load-panel-body">
+<p>Chỉ nạp khi bấm nút. BCTC năm truy vấn kho Parquet Tumiqa đã cache (chỉ tải một lần); giá và BCTC mới nạp khi cần. Kết quả lưu local, không cần quét toàn thị trường.</p>
+<label>Mã cần nạp <input id="loadTicker" maxlength="3" placeholder="Ví dụ: FPT"></label>
+<label><input id="loadExtended" type="checkbox"> Bổ sung BCTC quý, vĩ mô và tin tức (lâu hơn)</label>
+<button id="loadTickerButton" class="secondary">Nạp / cập nhật mã này</button>
+<div id="loadProgress" role="status" aria-live="polite"></div>
+<p class="table-note">Giữ ứng dụng chạy trong lúc nạp. Bộ dữ liệu cố định không bị thay đổi. Mã mới chưa xác minh ngành sẽ hiển thị nhóm khác.</p>
+</div>
+</details>
+<div id="notice" role="status" hidden></div>
+<div id="loading">Đang đọc bộ dữ liệu…</div>
+<div id="content" hidden></div>
+<footer>VN Equity Research · Ngày dữ liệu, đơn vị và nguồn được thể hiện trong từng phần.</footer>
+</main><script>
+// Giao diện thu gọn độc lập với app.js: không thay đổi biểu đồ hay luồng nạp dữ liệu.
+(() => {
+  const panel = document.getElementById('loadPanel');
+  const status = document.getElementById('loadPanelStatus');
+  const progress = document.getElementById('loadProgress');
+  if (!panel || !status || !progress) return;
+  try { panel.open = localStorage.getItem('vnresearch.loadPanel.open') === '1'; }
+  catch (_) { /* Trình duyệt không cho lưu trạng thái: mặc định đóng. */ }
+  panel.addEventListener('toggle', () => {
+    try { localStorage.setItem('vnresearch.loadPanel.open', panel.open ? '1' : '0'); }
+    catch (_) { /* Không ảnh hưởng tới thao tác nạp. */ }
+  });
+  const updateStatus = () => {
+    const title = progress.querySelector('p strong');
+    if (title) {
+      status.textContent = title.textContent;
+      const value = title.textContent;
+      status.dataset.state = value.includes('Đang nạp') ? 'running'
+        : value.includes('Nạp được một phần') ? 'partial'
+        : value.includes('Chưa hoàn tất') ? 'failed' : 'complete';
+    } else if (progress.textContent.includes('Không đọc được tiến độ')) {
+      status.textContent = 'Không đọc được tiến độ';
+      status.dataset.state = 'failed';
+    }
+  };
+  new MutationObserver(updateStatus).observe(progress, {childList:true,subtree:true,characterData:true});
+  updateStatus();
+})();
+</script></body></html>
