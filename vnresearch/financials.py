@@ -8,7 +8,7 @@ import re
 import unicodedata
 import pandas as pd
 
-NORMALIZATION_VERSION = 2
+NORMALIZATION_VERSION = 3
 STATEMENTS = ("balance_sheet", "income_statement", "cash_flow")
 PROVIDERS = {"KBS": "https://kbbuddywts.kbsec.com.vn",
              "VCI": "https://trading.vietcap.com.vn"}
@@ -25,12 +25,12 @@ RULES = {
   "revenue": r"^doanh thu thuan(\s|\(|$)|^doanh so thuan",
   "net_income": r"^(loi nhuan (ke toan )?sau thue|lai/?\(?lo\)? thuan sau thue|lai/?lo sau thue)(\s*\(|\s+(thu nhap doanh nghiep|tndn)|$)",
   "parent_income": r"^loi nhuan sau thue (phan bo cho chu so huu|cua co dong (cua )?(cong ty me|ngan hang me))",
-  "securities_revenue": r"^(cong )?doanh thu hoat dong(\s*\(|$)",
+  "securities_revenue": r"^(?:(?:cong|tong|tong cong) )?doanh thu hoat dong(\s*\(|\s*[:=]|$)",
   "operating_income": r"^tong thu nhap hoat dong",
   "net_interest_income": r"^thu nhap lai thuan",
   "operating_expense": r"^chi phi hoat dong(\s*\(|\s*[:=]|$)"},
  "cash_flow": {
-  "cfo": r"^luu chuyen (tien )?thuan (tu|trong) (cac )?hoat dong (san xuat )?kinh doanh(?!.*truoc thue)"}}
+  "cfo": r"^(?:luu chuyen (?:tien(?: te)? )?(?:thuan|rong)|tien thuan) (?:tu|trong) (?:cac )?hoat dong (?:san xuat )?kinh doanh"}}
 
 
 def clean_label(value):
@@ -40,9 +40,31 @@ def clean_label(value):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def canonical_field(label, statement):
+# VCI CFO: use the FINAL operating cash-flow total, not an intermediate subtotal.
+# Other vendor IDs fall back to an unambiguous final-total label.
+_CFO_FINAL_IDS = frozenset({
+    "net_cash_from_operating_activities",
+    "net_cash_inflows_outflows_from_operating_activities",
+})
+_CFO_NONFINAL_IDS = frozenset({
+    "operating_profit_loss_before_changes_in_working_capital",
+    "net_cash_flows_from_operating_activities_before_cit",
+})
+
+
+def canonical_field(label, statement, item_code=""):
+    text = clean_label(label)
+    if statement == "cash_flow":
+        # `normalize_statement` stores item_code as cash_flow/<VCI item_id>/<row>.
+        pieces = str(item_code).split("/")
+        provider_id = pieces[1].lower() if len(pieces) >= 3 and pieces[0] == "cash_flow" else ""
+        if provider_id in _CFO_NONFINAL_IDS or "truoc" in text or "before" in text:
+            return ""
+        if provider_id in _CFO_FINAL_IDS:
+            return "cfo"
+        return "cfo" if re.search(RULES["cash_flow"]["cfo"], text) else ""
     return next((k for k, pattern in RULES[statement].items()
-                 if re.search(pattern, clean_label(label))), "")
+                 if re.search(pattern, text)), "")
 
 
 def resolve_fields(frame):
@@ -54,7 +76,8 @@ def resolve_fields(frame):
     d = frame.copy().reset_index(drop=True)
     if d.empty:
         return d, {}
-    d["canonical_field"] = [canonical_field(r.item_name, r.statement) for r in d.itertuples()]
+    d["canonical_field"] = [canonical_field(r.item_name, r.statement, getattr(r, "item_code", ""))
+                            for r in d.itertuples()]
     diagnostics = {}
     for (ticker, period, statement), g in d.groupby(["symbol", "period", "statement"], sort=True):
         ambiguous, aliases = [], []
@@ -150,6 +173,12 @@ def repair_quarter_cache(store):
         updated["normalization_version"] = NORMALIZATION_VERSION
         if not old.equals(updated):
             meta = dict(store.manifest().get("files", {}).get("financial_quarterly.parquet", {}))
+            # Preserve the original source before a versioned, offline re-mapping.
+            # No remote API and no change to raw provider JSON.
+            backup = f"backups/quarterly/pre-normalization-v{NORMALIZATION_VERSION}.parquet"
+            if not (store.path / backup).exists():
+                store.write(backup, old, {"source": "Original quarterly Parquet before normalization v3",
+                                          "units": "VND", "normalization_version": 2})
             meta["normalization_version"] = NORMALIZATION_VERSION
             store.write("financial_quarterly.parquet", updated, meta)
         return {"rows": len(updated), "status": "complete", "diagnostics": diagnostics}
@@ -181,6 +210,7 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
     from .collectors import utc, REFERENCE
     from .analysis import financial_rows
     from .peers import map_sector
+    from .financial_policy import required_missing
     fetch = fetch or provider_statement
     from datetime import datetime, timezone
     last_year = int(through_year) if through_year is not None else datetime.now(timezone.utc).year - 1
@@ -199,7 +229,7 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
                 return False
             return (g.source_url.fillna("").str.startswith(REFERENCE).all() or
                     ("ingestion_origin" in g and g.ingestion_origin.fillna("").eq("provider_auto").all()))
-        broken = {r["period"] for r in rows if r["period"] in suspects or any(r.get(f) is None for f in ("assets", "equity", "net_income", "revenue", "cfo"))}
+        broken = {r["period"] for r in rows if r["period"] in suspects or bool(required_missing(r, sector))}
         # A duplicated extraction year calls the entire automatically mined
         # series into question, including wrongly selected cash-flow lines.
         if suspects:
@@ -218,7 +248,7 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
         if protected and protected == broken and rows and not missing_years:
             result["failed"].append({"symbol": ticker, "error": "Các năm thiếu dữ liệu thuộc nguồn đã nhập; giữ nguyên, cần bổ sung CSV đối soát: " + ", ".join(sorted(protected))})
             continue
-        errors, added = [], []
+        errors, added, limited = [], [], False
         for provider in ("VCI",):
             progress(f"{ticker}: BCTC năm từ {provider}.")
             try:
@@ -243,7 +273,7 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
                 duplicated = suspect_years(incoming, ticker)
                 validated = financial_rows(incoming, ticker, sector)
                 good = {r["period"] for r in validated if first_year <= int(r["period"]) <= last_year and r["period"] not in duplicated
-                        and all(r.get(f) is not None for f in ("assets", "equity", "liabilities", "net_income", "revenue", "cfo"))
+                        and not required_missing(r, sector) and r.get("liabilities") is not None
                         and math.isclose(r["assets"] - r["liabilities"], r["equity"], rel_tol=1e-6, abs_tol=1)}
                 good &= {str(y) for y, g in incoming.groupby("period") if set(g.statement) == set(STATEMENTS)}
                 with store.transaction():
@@ -268,6 +298,7 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
                     break
                 errors.append(f"{provider}: không đủ năm/chỉ tiêu để thay thế {', '.join(sorted(remaining)) or ticker}.")
             except SystemExit:
+                limited = True
                 errors.append(f"{provider}: giới hạn API; chạy lại sau khi hết hạn mức.")
                 break
             except Exception as exc:
@@ -275,6 +306,10 @@ def repair_annual_sources(store, tickers, *, first_year=2022, through_year=None,
         result["results"].append({"symbol": ticker, "years": sorted(set(added)), "errors": errors})
         if ((broken | missing_years) - set(added)) or (not rows and not added):
             result["failed"].append({"symbol": ticker, "error": "; ".join(errors) or "Chưa có nguồn đủ chỉ tiêu."})
-    result["status"] = "partial" if result["failed"] else "complete"
+        if limited:
+            result["status"] = "rate_limited"
+            break
+    if result["status"] != "rate_limited":
+        result["status"] = "partial" if result["failed"] else "complete"
     store.write_json("annual-repair-run.json", result, {"source": "Annual provider repair diagnostics"})
     return result

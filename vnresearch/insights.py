@@ -2,20 +2,53 @@
 import statistics
 import pandas as pd
 
-def quarterly_rows(frame, ticker):
-    if frame.empty: return []
-    d=frame.loc[frame.symbol==ticker]
-    result=[]
-    for period,g in d.groupby("period",sort=True):
-        fields={}
-        for field,items in g.loc[g.canonical_field.fillna("")!=""].groupby("canonical_field"):
-            # Ambiguous mappings never silently select the first value.
-            if len(items)==1:
-                r=items.iloc[0]
-                fields[field]={"value":float(r.value),"basis":r.basis,"scope":r.scope,
-                               "item_name":r.item_name,"source_url":r.source_url}
-        result.append({"period":str(period),"fields":fields,
-                       "note":"Tài sản/nợ/vốn tại thời điểm báo cáo. KQKD và dòng tiền theo kỳ nguồn; chưa xác minh riêng quý/lũy kế. Không tính TTM hoặc ROE quý."})
+from .financial_policy import accounting_model, required_missing, missing_statements, top_line
+
+
+def quarterly_rows(frame, ticker, sector="other"):
+    """Read-only quarterly coverage; a present quarter is not necessarily complete.
+
+    The source has not established whether income/cash figures are standalone
+    quarter values or cumulative YTD, so we never derive YoY/TTM here.
+    """
+    if frame.empty or "symbol" not in frame or "period" not in frame:
+        return []
+    d = frame.loc[frame.symbol == ticker]
+    if d.empty:
+        return []
+    # Read-only fallback for old v2 caches. Avoid silently hiding mapped totals
+    # just because the user has not yet run the optional offline migration.
+    if {"statement", "item_name", "item_code"} <= set(d.columns):
+        from .financials import NORMALIZATION_VERSION, resolve_fields
+        legacy = ("canonical_field" not in d or
+                  d["canonical_field"].fillna("").eq("").all() or
+                  ("normalization_version" in d and
+                   pd.to_numeric(d["normalization_version"], errors="coerce").fillna(0).lt(NORMALIZATION_VERSION).any()))
+        if legacy:
+            d, _ = resolve_fields(d)
+    result = []
+    for period, g in d.groupby("period", sort=True):
+        fields = {}
+        if "canonical_field" in g:
+            named = g.loc[g.canonical_field.fillna("") != ""]
+            for field, items in named.groupby("canonical_field"):
+                # Conflicting aliases must be resolved by the mapper, not guessed here.
+                if len(items) == 1:
+                    r = items.iloc[0]
+                    fields[field] = {"value": float(r.value), "basis": r.basis,
+                                     "scope": r.scope, "item_name": r.item_name,
+                                     "source_url": r.source_url}
+        present = sorted(set(g.statement.astype(str))) if "statement" in g else []
+        absent_reports = missing_statements(present)
+        missing_fields = required_missing(fields, sector)
+        line_field, _ = top_line(fields, sector)
+        result.append({"period": str(period), "fields": fields,
+                       "accounting_model": accounting_model(sector),
+                       "top_line_field": line_field,
+                       "statements_present": present, "missing_statements": absent_reports,
+                       "missing_fields": missing_fields,
+                       "coverage_status": "partial" if (absent_reports or missing_fields) else "complete",
+                       "note": "Tài sản/nợ/vốn tại thời điểm báo cáo. KQKD và dòng tiền theo kỳ nguồn; chưa xác minh riêng quý/lũy kế. Không tính TTM hoặc ROE quý."})
     return result
 
 def latest_macro(records):

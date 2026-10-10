@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import threading
 import uuid
 
-from .storage import Store, symbol
+from .storage import Store, symbol, atomic_json
 from .locking import process_lock
 from . import collectors, history
 from .manual import config
@@ -13,24 +13,47 @@ from .quality import readiness
 def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda message: None):
     ticker = symbol(ticker)
     cfg = config()
-    result = {"symbol": ticker, "steps": [], "failed": []}
+    result = {"symbol": ticker, "steps": [], "failed": [], "warnings": [], "optional_failed": []}
     def explain_error(exc):
         if isinstance(exc, KeyError):
             return ("Thiếu trường trong dữ liệu/API: " + repr(str(exc)) +
                     ". Nguồn hoặc cache đã đổi cấu trúc; dữ liệu cũ không bị xóa.")
         return f"{type(exc).__name__}: {str(exc)}"
-    def step(label, action):
+    def step(label, action, *, scope="primary"):
+        """Keep optional peer/industry/reference failures separate from the main ticker."""
         progress(label)
         try:
             value = action()
             failed = value.get("failed", []) if isinstance(value, dict) else []
             state = value.get("status", "complete") if isinstance(value, dict) else "complete"
-            if failed or state in {"partial", "rate_limited", "interrupted"}:
-                result["failed"].append({"step": label, "error": str(failed or state)[:500]})
-            result["steps"].append({"name": label, "status": "partial" if failed else state})
+            quality_only = (state == "partial" and isinstance(value, dict)
+                            and value.get("execution_status") == "complete"
+                            and value.get("quality_status") == "partial" and not failed)
+            if quality_only:
+                for row in value.get("results", []):
+                    gaps = [f"{period}: {', '.join(keys)}"
+                            for key in ("missing_statements_by_period", "missing_by_period")
+                            for period, keys in row.get(key, {}).items() if keys]
+                    if gaps:
+                        result["warnings"].append({"step": label, "message": row.get("symbol", ticker)
+                                                   + " đã lưu nguồn, nhưng chưa đầy đủ: " + "; ".join(gaps)})
+            elif failed or state in {"partial", "rate_limited", "interrupted"}:
+                issue = {"step": label, "scope": scope, "error": str(failed or state)[:500]}
+                if scope == "primary":
+                    result["failed"].append(issue)
+                else:
+                    result["optional_failed"].append(issue)
+                    result["warnings"].append({"step": label, "message": "Nguồn bổ sung/đối chiếu chưa hoàn tất: " + issue["error"]})
+            result["steps"].append({"name": label, "scope": scope, "status": "partial" if failed else state})
+            return value
         except (Exception, SystemExit) as exc:
-            result["failed"].append({"step": label, "error": explain_error(exc)[:500]})
-            result["steps"].append({"name": label, "status": "failed"})
+            issue = {"step": label, "scope": scope, "error": explain_error(exc)[:500]}
+            if scope == "primary":
+                result["failed"].append(issue)
+            else:
+                result["optional_failed"].append(issue)
+                result["warnings"].append({"step": label, "message": "Nguồn bổ sung/đối chiếu chưa hoàn tất: " + issue["error"]})
+            result["steps"].append({"name": label, "scope": scope, "status": "failed"})
 
     if news_only:
         from .newsfeed import collect_rss_feeds
@@ -41,7 +64,9 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
             result["coverage"] = []
             result["failed"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "error":explain_error(exc)[:500]})
         result["macro_count"] = len(store.read_json("macro.json", []))
-        result["status"] = "partial" if result["failed"] else "complete"
+        result["execution_status"] = "partial" if result["failed"] else "complete"
+        result["quality_status"] = "unreviewed"
+        result["status"] = result["execution_status"]
         result["note"] = "RSS chỉ có tiêu đề, tóm tắt và URL; ngành/mã được gắn theo quy tắc, chưa đối soát."
         return result
 
@@ -59,70 +84,68 @@ def load_one(store, ticker, *, extended=False, news_only=False, progress=lambda 
     if not store.read_json("industry_catalog.json", {}).get("symbols", {}).get(ticker):
         from .newsfeed import sector_for_ticker
         if sector_for_ticker(ticker, profiles[ticker]) == "other":
-            step("Tra cứu phân ngành ICB (nếu nguồn hỗ trợ)", lambda: refresh_industry_catalog(store))
+            step("Tra cứu phân ngành ICB (nếu nguồn hỗ trợ)", lambda: refresh_industry_catalog(store), scope="optional")
     try:
         selection = suggest(store, ticker, profiles=profiles)
     except (Exception, SystemExit) as exc:
-        result["failed"].append({"step": "Chọn nhóm cùng ngành", "error": explain_error(exc)[:500]})
+        result["optional_failed"].append({"step": "Chọn nhóm cùng ngành", "scope": "optional", "error": explain_error(exc)[:500]})
+        result["warnings"].append({"step": "Chọn nhóm cùng ngành", "message": explain_error(exc)[:500]})
         selection = {"peers": [], "candidates": [], "sector": "other", "sector_source": "Không lấy được phân ngành",
                      "note": "Đã giữ lại dữ liệu mã chính; không tự ghép nhóm ngành khi lỗi."}
     wanted = list(dict.fromkeys([ticker] + selection["peers"]))
     result["peer_selection"] = selection
     for t in wanted:
-        exchange = catalogue.get(t, {}).get("exchange")
-        exchanges = {"HOSE": ["HSX"], "HSX": ["HSX"], "HNX": ["HNX"], "UPCOM": []}.get(exchange, ["HSX", "HNX"])
-        if not exchanges:
-            # UPCoM: Tumiqa's HSX/HNX bundles do not cover this exchange.
-            # Reuse the VCI provider already part of vnstock, without adding
-            # an external service or making a separate UPCoM data store.
-            from .upcom_annual import fetch_annual_vci
-            def upcom(t=t):
-                return fetch_annual_vci(store, t, first_year=cfg["first_year"])
-            step("BCTC năm " + t + " · VCI (UPCoM, nếu có)", upcom)
-            continue
-        def annual(t=t, exchanges=exchanges):
-            errors = []
-            for ex in exchanges:
-                try:
-                    return collectors.fetch_annual_reference(store, [t], cfg["reference_commit"],
-                                                              ex, cfg["first_year"])
-                except ValueError as exc:
-                    errors.append(str(exc))
-            raise ValueError("; ".join(errors))
-        step("BCTC năm " + t + " · dùng cache nếu có", annual)
-        # Optional built-in VCI repair for corrupt/incomplete existing years;
-        # failure must not remove historical data or stop price/news updates.
-        try:
-            from .financials import repair_annual_sources
-        except ImportError:
-            repair_annual_sources = None
-        if repair_annual_sources is not None:
-            step("Đối soát / bổ sung BCTC năm " + t + " qua VCI khi cần",
-                 lambda t=t: repair_annual_sources(store, [t], first_year=cfg["first_year"], progress=progress))
+        def annual_step(label, action, *, scope="primary", t=t):
+            return step(label, action, scope=scope if t == ticker else "optional")
+        collectors.fetch_annual_for_symbol(store, t, cfg, step=annual_step, progress=progress)
 
     prices = store.read("prices.parquet")
     for t in [ticker, cfg.get("benchmark", "VNINDEX")]:
         exists = not prices.empty and bool((prices.symbol == t).any())
         step("Giá " + t, lambda t=t, exists=exists: history.prepare_history(
-            store, [t], start=None if exists else cfg["history_start"], delay=7.0, progress=progress))
+            store, [t], start=None if exists else cfg["history_start"], delay=7.0, progress=progress),
+            scope="primary" if t == ticker else "optional")
     if extended:
         step("BCTC quý " + ticker, lambda: collectors.fetch_quarters(store, [ticker]))
         # Reuse bounded manual context pipeline; outer ingestion lock is already held.
         from .manual import _run
-        step("Vĩ mô và tin " + ticker, lambda: _run("context", [ticker], include_rss=False))
+        step("Vĩ mô và tin " + ticker, lambda: _run("context", [ticker], include_rss=False), scope="optional")
         from .newsfeed import collect_rss_feeds
-        step("Tin RSS CafeF · ngành và cổ phiếu", lambda: collect_rss_feeds(store))
+        step("Tin RSS CafeF · ngành và cổ phiếu", lambda: collect_rss_feeds(store), scope="optional")
     try:
         coverage = readiness(store)
         result["coverage"] = [r for r in coverage["symbols"] if r["symbol"] in wanted]
         result["macro_count"] = coverage["macro_count"]
+        primary = next((r for r in result["coverage"] if r["symbol"] == ticker), {})
+        annual_missing = primary.get("annual_missing_fields", {})
+        q_missing = primary.get("quarter_missing_fields", {})
+        q_reports = primary.get("quarter_missing_statements", {})
+        years = primary.get("annual_periods", [])
+        quarters = primary.get("quarter_periods", [])
+        quality_gaps = []
+        for year in years:
+            if annual_missing.get(year):
+                quality_gaps.append("BCTC năm " + str(year) + ": " + ", ".join(annual_missing[year]))
+        if extended:
+            for period in quarters:
+                if q_missing.get(period) or q_reports.get(period):
+                    quality_gaps.append("BCTC quý " + str(period) + ": " +
+                                        ", ".join(q_reports.get(period, []) + q_missing.get(period, [])))
+        if quality_gaps:
+            result["warnings"].append({"step": "Kiểm tra chỉ tiêu mã chính",
+                                       "message": "; ".join(quality_gaps[:8]) +
+                                       (f"; và {len(quality_gaps)-8} kỳ khác" if len(quality_gaps) > 8 else "")})
+        result["quality_status"] = "partial" if quality_gaps else "complete"
     except (Exception, SystemExit) as exc:
         # A read-only coverage/SDK schema exception should not turn an otherwise
         # successful import into the unhelpful job-level 'missing-fields'.
         result["coverage"] = []
         result["macro_count"] = len(store.read_json("macro.json", []))
-        result["failed"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "error":explain_error(exc)[:500]})
-    result["status"] = "partial" if result["failed"] else "complete"
+        result["optional_failed"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "error":explain_error(exc)[:500]})
+        result["warnings"].append({"step":"Đọc thống kê bộ dữ liệu đã lưu", "message":explain_error(exc)[:500]})
+        result["quality_status"] = "unverified"
+    result["execution_status"] = "partial" if result["failed"] else "complete"
+    result["status"] = "partial" if result["failed"] or result.get("quality_status") == "partial" else "complete"
     result["note"] = "Đã đề xuất "+str(len(selection["peers"]))+" mã cùng ngành. "+selection["note"]+" Hoàn tất nạp không có nghĩa dữ liệu đã được đối soát."
     return result
 
@@ -165,3 +188,15 @@ class LoadJobs:
         except (Exception, SystemExit) as exc:
             with self.lock:
                 self.job.update(status="failed", message=("Lỗi "+type(exc).__name__+": "+str(exc))[:500])
+        finally:
+            # Keep one result per job instead of overwriting financial-run.json.
+            # Diagnostic logging must never turn a successful import into failed.
+            try:
+                with self.lock:
+                    snapshot = deepcopy(self.job)
+                store = locals().get("store")
+                if store is not None:
+                    path = store.path / "logs" / "ingestion" / ticker / (snapshot["id"] + ".json")
+                    atomic_json(path, snapshot)
+            except (OSError, ValueError, TypeError, KeyError):
+                pass

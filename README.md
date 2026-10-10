@@ -1,316 +1,295 @@
 # StockInsight — VN Equity Research
 
-**Hướng dẫn tải mã nguồn từ GitHub, cài đặt và chạy ứng dụng trên máy cá nhân (local).**
+Ứng dụng nghiên cứu cổ phiếu Việt Nam chạy trên máy cá nhân: nạp giá/BCTC, lưu Parquet/JSON, phân tích trên web và xuất PDF tiếng Việt.
 
-StockInsight là ứng dụng nghiên cứu cổ phiếu Việt Nam chạy trên máy tính cá nhân, sử dụng **Python + FastAPI**, giao diện **HTML/CSS/JavaScript**, lưu dữ liệu **Parquet/JSON** và hỗ trợ xuất báo cáo phân tích **PDF**. Các nhóm phân tích gồm tổng quan vĩ mô, ngành, doanh nghiệp, giá/giao dịch và cơ hội đầu tư.
+**Hai cách nạp dữ liệu:** nhập từng mã trên web, hoặc chủ động chạy CMD quét toàn thị trường. Sau mỗi phiên giao dịch, chạy CMD cập nhật giá để bổ sung các phiên mới. Cả hai cách dùng chung `data/local/`; mở phân tích hoặc xuất PDF không tự gọi API.
 
-> **Phạm vi hướng dẫn:** bản StockInsight đã tích hợp kho BCTC năm Tumiqa, chức năng **“Nạp / cập nhật mã này”**, khung nạp dữ liệu có thể thu gọn và bản sửa mã hóa UTF-8 trên Windows. Nếu GitHub đang chứa bản source cũ hơn, một số tên chức năng có thể khác.
->
-> **Lưu ý:** Repository chính thức của dự án: [MasonTahieu/Du-an-nhom](https://github.com/MasonTahieu/Du-an-nhom). Bản giao diện mới sử dụng **một bộ dữ liệu local**, tự bổ sung dữ liệu thực tế VCB/FPT/HPG đã đóng gói khi mở lần đầu. Dữ liệu demo không được nhập vào local.
+Repository: [MasonTahieu/Du-an-nhom](https://github.com/MasonTahieu/Du-an-nhom).
 
-## 1. Yêu cầu hệ thống
+**Lưu ý về dữ liệu trên máy mới:** tải source từ GitHub là tải chương trình, **không nhận được kho dữ liệu thị trường mà tác giả hoặc người khác đã quét**. Mỗi máy cần có Internet và chủ động nạp dữ liệu bằng web hoặc CMD để xây dựng kho riêng. Cài đặt thư viện và mở ứng dụng không thay cho bước nạp dữ liệu.
 
-- **Hệ điều hành:** Windows (các bước `.cmd` và PowerShell bên dưới dành cho Windows).
-- **Python:** khuyến nghị **Python 3.11, bản 64-bit**; script cài đặt yêu cầu Python từ 3.11 trở lên. Bản đã kiểm thử và khóa thư viện là Python 3.11.
-- **Kết nối Internet:** cần khi cài thư viện lần đầu và khi nạp dữ liệu trực tuyến; không cần Internet để xem/phân tích lại dữ liệu đã đóng gói hoặc cache hợp lệ sau khi cài xong.
-- **Git:** *không bắt buộc*, chỉ cần nếu muốn dùng `git clone`, `git pull` hoặc tự cập nhật source từ repository.
-- **Trình duyệt:** Chrome, Edge hoặc trình duyệt hiện đại tương đương.
+Repository hiện có dữ liệu mẫu và một bản dữ liệu thực tế cố định để kiểm tra/tham khảo. Những dữ liệu này không phải kho toàn thị trường, không bảo đảm có mã/kỳ bạn cần và không tự cập nhật theo ngày. Người dùng vẫn cần tải dữ liệu phục vụ các mã muốn nghiên cứu và kiểm tra ngày giá, kỳ BCTC trước khi phân tích.
 
-> Không cần tự cài PostgreSQL, SQLite server, Node.js hoặc dịch vụ AI để chạy phiên bản này.
+## 1. Tải source và chạy dự án trên Windows
 
-## 2. Tải source code từ GitHub
+### Bước 1 — Tải toàn bộ source từ GitHub
 
-### Cách A — Download ZIP (dễ nhất, không cần cài Git)
+Mở [repository MasonTahieu/Du-an-nhom](https://github.com/MasonTahieu/Du-an-nhom), chọn một trong hai cách tải:
 
-1. Mở **trang GitHub của dự án StockInsight** do nhóm cung cấp.
-2. Nhấn **Code** → **Download ZIP**.
-3. Giải nén ZIP vào thư mục bạn muốn, ví dụ `D:\StockInsight`.
-4. Mở thư mục sau giải nén và tìm **`Cai-Dat.cmd`** và **`Mo-Ung-Dung.cmd`**.
-
-**Quan trọng:** Nếu file ZIP tạo thêm một thư mục trung gian như `StockInsight-main`, hãy thao tác **bên trong thư mục có các file `.cmd`**. Không cần đổi tên thư mục để chạy.
-
-### Cách B — Clone bằng Git (phù hợp nếu thường xuyên cập nhật source)
-
-Mở PowerShell, di chuyển đến thư mục muốn lưu rồi chạy:
+- **Tải ZIP, không cần Git:** bấm **Code → Download ZIP**, đợi tải xong, nhấp phải file ZIP → **Extract All / Giải nén tất cả**. Mở thư mục đã giải nén có `README.md`, `Cai-Dat.cmd`, `Mo-Ung-Dung.cmd`, `static/` và `vnresearch/`. Không chạy CMD ngay bên trong file ZIP và không chỉ tải riêng vài file Python.
+- **Clone bằng Git:** nếu máy đã cài Git, mở PowerShell tại thư mục muốn lưu dự án rồi chạy:
 
 ```powershell
-cd D:\
 git clone https://github.com/MasonTahieu/Du-an-nhom.git
 cd Du-an-nhom
 ```
 
-Đây là URL Clone HTTPS của repository đã xác minh. Nếu đổi tên repository trên GitHub, hãy lấy lại URL trong nút **Code**.
+Cả hai cách đều tải source của cùng dự án. Tải ZIP phù hợp khi chỉ muốn chạy ứng dụng; clone thuận tiện hơn khi cần cập nhật source về sau.
 
-Nếu clone repo riêng tư, bạn cần được cấp quyền truy cập GitHub tương ứng.
+### Bước 2 — Cài Python và thư viện
 
-## 3. Kiểm tra Python trước khi cài
+1. Cài **Python 3.11, 64-bit**, bật **Add Python to PATH** khi cài. Bộ cài dự án chấp nhận Python từ 3.11; Python 3.11 là phiên bản khuyến nghị cho bộ thư viện đã khóa.
+2. Nếu cần kiểm tra, mở PowerShell và chạy `python --version`. Sau khi mới cài Python, đóng và mở lại cửa sổ lệnh để PATH được cập nhật.
+3. Trong thư mục dự án, nhấp đúp **`Cai-Dat.cmd`**. Cần Internet để cài thư viện.
+4. Đợi thông báo **San sang. Chay Mo-Ung-Dung.cmd de mo giao dien.** Nếu có lỗi, xử lý theo thông báo rồi chạy lại bộ cài; chưa chuyển sang bước mở ứng dụng.
 
-Mở **PowerShell** trong Windows và chạy:
+Bộ cài tạo/tái sử dụng `%USERPROFILE%\.venv`, cài thư viện ứng dụng từ `requirements.lock.txt` và bộ nạp từ `requirements-market.txt`, rồi kiểm tra dữ liệu mẫu đóng gói. Chỉ có **một bộ cài đầy đủ**, không cần cài riêng bộ quét thị trường. Thông thường chỉ cài một lần; chạy lại khi source hoặc yêu cầu thư viện thay đổi.
+
+Không cần tự cài database server, Node.js hay dịch vụ AI. Không đưa `.env`, API key hoặc token vào GitHub. Nếu SDK yêu cầu đăng ký trên máy mới, thực hiện theo thông báo của SDK; hệ thống không bỏ qua hạn mức nguồn.
+
+### Bước 3 — Mở và dừng ứng dụng
+
+1. Nhấp đúp **`Mo-Ung-Dung.cmd`**. Script khởi động server trên máy và mở trình duyệt.
+2. Nếu trình duyệt không tự mở, truy cập **http://127.0.0.1:8001** trên chính máy đang chạy dự án.
+3. Chọn doanh nghiệp và bấm **Xem phân tích**. Có dữ liệu phù hợp thì có thể bấm **Xuất báo cáo PDF**.
+4. Khi muốn dừng server, chạy **`Tat-Ung-Dung.cmd`**. Đóng tab trình duyệt không đồng nghĩa server đã dừng.
+
+**Sau khi mở ứng dụng, còn bước nạp dữ liệu:** chọn cách 1 ở mục 2 để tải dữ liệu cho từng cổ phiếu, hoặc cách 2 ở mục 3 để dựng kho toàn danh mục. Chỉ cài `Cai-Dat.cmd` và mở `Mo-Ung-Dung.cmd` chưa có nghĩa đã tải xong dữ liệu thị trường.
+
+Ứng dụng có thể hiển thị một số dữ liệu thực tế cố định đi kèm source: lần mở đầu sẽ bổ sung phần còn thiếu của bản này vào local. Đây là bản chốt để tham khảo, không phải lượt tải dữ liệu mới từ Internet. Không coi việc đã thấy bảng số liệu là bằng chứng dữ liệu hiện tại đã đầy đủ hoặc mới nhất.
+
+Cần Internet và quyền truy cập nguồn phù hợp để nạp dữ liệu. **Chỉ sau khi dữ liệu cần dùng đã được lưu trên máy**, việc xem phân tích và xuất PDF từ phần đã lưu mới có thể thực hiện offline. Khi offline, ứng dụng không lấy được giá, BCTC hay tin mới.
+
+Có thể thực hiện hai bước cài và mở bằng PowerShell trong thư mục dự án:
 
 ```powershell
-python --version
+.\Cai-Dat.cmd
+.\Mo-Ung-Dung.cmd
 ```
 
-Kết quả mong muốn, ví dụ:
+**Chọn cách nạp phù hợp:** chỉ cần nghiên cứu một vài cổ phiếu thì dùng web ở mục 2; muốn dựng kho cho toàn danh mục thị trường thì dùng CMD ở mục 3. Không bắt buộc quét toàn thị trường mới sử dụng được ứng dụng.
 
-```text
-Python 3.11.x
-```
+## 2. Cách 1 — Nạp từng cổ phiếu trên web
 
-Nếu chưa có Python 3.11:
+### Nạp hoặc cập nhật một mã
 
-1. Tải từ [python.org/downloads](https://www.python.org/downloads/).
-2. Cài bản Python 3.11 phù hợp với Windows.
-3. Khi cài, bật tùy chọn **Add python.exe to PATH** (nếu trình cài đặt cung cấp).
-4. Đóng/mở lại PowerShell rồi chạy `python --version` một lần nữa.
+1. Vào trang **Tổng quan đầu tư**. Khung **Nạp dữ liệu theo mã** chỉ xuất hiện ở trang này.
+2. Bấm tiêu đề khung để mở, nhập mã muốn nạp như SSI, FPT hoặc VCB vào ô **Mã cần nạp**.
+3. Nếu chỉ cần giá và BCTC năm, để lựa chọn bổ sung ở trạng thái chưa tích. Muốn thêm BCTC quý, vĩ mô và tin tức, tích **Bổ sung BCTC quý, vĩ mô và tin tức (lâu hơn)**.
+4. Bấm **Nạp / cập nhật mã này**, đợi tiến trình và xem kết quả từng bước. Mặc định hệ thống thử nạp BCTC năm của mã và nhóm đối chiếu, giá của mã và VNINDEX.
+5. Sau khi nạp, chọn doanh nghiệp trong thanh trên cùng, bấm **Xem phân tích** nếu cần làm mới, rồi xem các trang phân tích hoặc **Xuất báo cáo PDF**.
 
-**Lưu ý:** `Cai-Dat.cmd` sử dụng lệnh `python` trên PATH. Nếu máy có nhiều phiên bản Python, hãy đảm bảo lệnh `python` trỏ tới bản 3.11 trước khi tiếp tục.
+Nhập mã hoặc chọn doanh nghiệp chưa làm phát sinh lượt nạp. Chỉ bấm nút nạp mới yêu cầu thu thập/cập nhật dữ liệu. Có thể dùng lại nút này cho một mã đã nạp để bổ sung dữ liệu còn thiếu hoặc cập nhật giá gần nhất.
 
-## 4. Cài đặt thư viện của dự án (chỉ cần làm lần đầu)
+Có thể chuyển sang trang phân tích khác trong lúc nạp; tiến trình vẫn tiếp tục. Quay lại **Tổng quan đầu tư** để xem trạng thái và kết quả. Bấm tiêu đề khung để thu gọn cũng không hủy tiến trình. **Giữ server chạy trong lúc nạp**, không chạy `Tat-Ung-Dung.cmd` khi công việc chưa xong.
 
-1. Mở thư mục gốc vừa tải từ GitHub.
-2. Nhấp đúp **`Cai-Dat.cmd`**.
-3. Chờ chương trình cài các thư viện từ `requirements.lock.txt` và kiểm tra dữ liệu demo.
-4. Khi có thông báo sẵn sàng, hoàn tất bước cài đặt.
+Nếu chỉ muốn cập nhật tin RSS, bấm **Cập nhật tin CafeF theo ngành / mã** trong cùng khung; thao tác này không tải lại giá/BCTC. Tin được thu thập từ các kênh đã cấu hình, sau đó giao diện lọc theo mã và ngành.
 
-Script hiện tại tạo/tái sử dụng môi trường Python ở:
+### Xem và kiểm tra dữ liệu
 
-```text
-C:\Users\<TEN_NGUOI_DUNG>\.venv\
-```
+- Thanh **Tìm cổ phiếu / Doanh nghiệp** dùng để chọn mã cần xem. Chọn mã trong danh mục không có nghĩa mã đó đã có đầy đủ dữ liệu.
+- Các trang **Vĩ mô & ngành**, **Giá & giao dịch**, **Tài chính doanh nghiệp**, **So sánh & tin tức**, **Cơ hội & rủi ro** đọc dữ liệu đã lưu; không hiển thị khung nạp theo mã.
+- Ở **Dữ liệu & hướng dẫn**, bấm **Kiểm tra dữ liệu đã lưu** để mở bảng thống kê ngày giá cuối, số phiên, năm/quý BCTC và số tin. Nút đổi thành **Thu gọn bảng dữ liệu**; bấm lại để đóng bảng. Mở lại sẽ kiểm tra dữ liệu hiện tại. Thao tác kiểm tra không nạp dữ liệu mới.
+- Khi một nguồn gặp lỗi, xem kết quả từng bước; phần dữ liệu đã lưu hợp lệ được giữ lại. Khi bị ngắt, bấm nạp lại để tái sử dụng phần đã lưu.
 
-Đây là thư mục **môi trường thư viện**, không phải nơi lưu dữ liệu cổ phiếu. Nếu đã có `.venv` ở thư mục người dùng do dự án Python khác tạo, nên lưu ý nguy cơ dùng chung các thư viện giữa các dự án.
+BCTC năm ưu tiên cache Tumiqa ghim commit cho HOSE/HNX, dùng VCI bổ sung khi thiếu hoặc phát hiện dữ liệu tự động đáng ngờ. UPCoM thử nguồn VCI khi có hỗ trợ. BCTC quý mới dùng VCI. Giá lấy từ KBS qua vnstock; lượt đầu từ `history_start`, lượt sau cập nhật vùng gần nhất.
 
-### Muốn nạp dữ liệu mới từ Internet?
+Không có tác vụ tự chạy theo lịch. Dữ liệu chỉ được cập nhật khi người dùng chủ động bấm nút hoặc chạy CMD.
 
-Chạy thêm **`01-Cai-Bo-Nap.cmd`** (một lần trên máy mới). Script này cài các thư viện thu thập trực tuyến như `vnstock` cùng các thư viện hỗ trợ đọc nguồn web. Nếu chỉ xem báo cáo VCB/FPT/HPG từ bộ dữ liệu đi kèm, bước này **không bắt buộc**.
+## 3. Cách 2 — Quét toàn thị trường bằng CMD
 
-## 5. Khởi động ứng dụng
+Các thao tác sau do người dùng chủ động chạy. CMD có thể chạy độc lập, không bắt buộc mở web. Cần cài xong `Cai-Dat.cmd` trước. Không mở nhiều lượt nạp web/CMD cùng lúc.
 
-1. Trong thư mục gốc, nhấp đúp **`Mo-Ung-Dung.cmd`**.
-2. Đợi cửa sổ thông báo ứng dụng chạy thành công.
-3. Trình duyệt thường tự mở. Nếu không, truy cập:
+### Cách mở CMD và truyền tham số
 
-   **http://127.0.0.1:8001**
+- **Không thêm tham số:** nhấp đúp file `.cmd` trong thư mục dự án. Đọc tiến độ/kết quả trong cửa sổ lệnh; khi xuất hiện yêu cầu nhấn phím để tiếp tục thì lượt chạy đã kết thúc.
+- **Có thêm tham số:** mở thư mục dự án trong File Explorer, gõ `powershell` vào thanh địa chỉ rồi Enter. Trong cửa sổ vừa mở, chạy tên file với tiền tố `.\` và tham số như các ví dụ bên dưới.
 
-4. Trang **VN Equity Research** xuất hiện là bạn đã khởi chạy thành công.
+Đợi một CMD kết thúc rồi mới chạy CMD tiếp theo. Web có thể dùng để xem dữ liệu, nhưng tránh bấm nạp trên web trong khi CMD đang nạp.
 
-Các lần sử dụng sau, thông thường chỉ cần chạy **`Mo-Ung-Dung.cmd`**, không cần chạy lại trình cài đặt.
+### Thứ tự chạy lần đầu và cập nhật về sau
 
-### Dừng ứng dụng
-
-Nhấp đúp **`Tat-Ung-Dung.cmd`** để dừng tiến trình server do script dự án khởi động. Nên dừng ứng dụng trước khi cập nhật mã nguồn hoặc áp dụng bản vá.
-
-> Nếu mở lại mà vẫn thấy giao diện cũ, nhấn **Ctrl + F5** trên trình duyệt để tải lại HTML/CSS/JS.
-
-## 6. Cách 1 — Xem dữ liệu đã có sẵn, không cần nạp lại
-
-Sau khi mở giao diện:
-
-1. Mở ứng dụng. **Lần đầu**, hệ thống tự đưa những phần dữ liệu thực tế VCB/FPT/HPG còn thiếu từ `data/submission/` sang `data/local/`. Không cần bấm nút hoặc có Internet; không ghi đè dữ liệu cá nhân đang có.
-2. Ở mục **Doanh nghiệp**, chọn **VCB**, **FPT** hoặc **HPG**. Giao diện **không còn ô chọn ba bộ dữ liệu**.
-3. Bấm **“Xem phân tích”**.
-4. Dùng thanh điều hướng bên trái để xem: tổng quan, vĩ mô và ngành, giá/giao dịch, tài chính, so sánh và tin tức, định giá và rủi ro.
-5. Bấm **“Xuất báo cáo PDF”** khi cần tạo báo cáo từ dữ liệu đã lưu.
-
-**Cơ chế dữ liệu thống nhất:**
-
-| Thư mục | Vai trò |
-|---|---|
-| `data/local/` | **Bộ dữ liệu duy nhất giao diện sử dụng**, gồm dữ liệu đã nạp và phần thực tế chốt được bổ sung khi thiếu |
-| `data/submission/` | Bản thực tế đóng gói, **chỉ đọc** và giữ lại để tái hiện kết quả báo cáo đã chốt |
-| `data/sample/` | Dữ liệu mẫu **không được trộn vào local**, chỉ phục vụ kiểm thử riêng |
-
-Dữ liệu local có ưu tiên cao nhất. Đối với giá, giữ dòng cùng mã/ngày đã có; không gộp dữ liệu giá khác `price_basis`. Đối với BCTC, giữ toàn bộ mã/năm đã có. Các mục tin tức và vĩ mô trùng được ưu tiên giữ bản local. Kết quả hợp nhất lần đầu được ghi trong `data/local/.unified-submission-v1.json`. **Chỉ VCB có nhận định đã đối soát trong phạm vi ghi ở báo cáo; FPT/HPG chưa mặc nhiên được đối soát hoàn toàn.**
-
-### Báo cáo PDF nằm ở đâu?
-
-- PDF xuất mới qua giao diện: được ghi trong **`reports/generated/`**, chế độ `local`.
-- PDF VCB mẫu đã đóng gói: **`output/pdf/`**, nếu chủ repo đã đưa thư mục này lên GitHub.
-- Có thể tải PDF thông qua chức năng của giao diện khi tạo báo cáo.
-
-## 7. Cách 2 — Nạp/cập nhật một mã cổ phiếu mới
-
-Ví dụ bạn muốn phân tích **CTG**, **MWG** hoặc một mã khác chưa có dữ liệu đầy đủ trong `local`.
-
-**Điều kiện:** đã chạy `01-Cai-Bo-Nap.cmd`, có Internet và ứng dụng đang mở.
-
-1. Mở thanh **“Nạp dữ liệu theo mã”** (mặc định có thể đang thu gọn; bấm vào thanh để mở).
-2. Nhập mã cổ phiếu, ví dụ `CTG`.
-3. Nếu chỉ muốn thử quy trình cơ bản, **không tích** ô bổ sung dữ liệu ở lần đầu.
-4. Bấm **“Nạp / cập nhật mã này”**.
-5. Đợi từng bước hoàn thành, xem các trạng thái `complete`, `partial`, `failed` nếu có.
-6. Sau khi nạp, chọn mã vừa nạp và bấm **“Xem phân tích”**; giao diện luôn dùng bộ dữ liệu chung `local`.
-
-### Nút “Nạp / cập nhật mã này” lấy gì?
-
-**Mặc định hệ thống thử nạp:**
-
-- BCTC **năm** của mã được chọn và các doanh nghiệp đối chiếu đã cấu hình, ưu tiên kho Parquet lịch sử Tumiqa đã cache.
-- Giá giao dịch lịch sử của mã được chọn qua KBS/vnstock.
-- Giá chỉ số **VN-Index** để so sánh.
-
-**Nếu tích ô “Bổ sung BCTC quý, vĩ mô và tin tức (lâu hơn)”**, hệ thống còn thử lấy:
-
-- BCTC quý qua nguồn đã cấu hình (khả năng thành công phụ thuộc nguồn/SDK).
-- Dữ liệu vĩ mô và tỷ giá từ các nguồn đã cấu hình.
-- Tin tức doanh nghiệp từ các nguồn hỗ trợ.
-
-**Lưu ý quan trọng:** `complete` chỉ nghĩa là một bước đã thực hiện xong theo quy tắc của chương trình; **không cam kết** đã có đầy đủ dữ liệu, cập nhật đến ngày hiện tại, đã kiểm toán hoặc đủ cơ sở định giá. Nguồn Tumiqa cung cấp **BCTC năm lịch sử**, không cung cấp giá cổ phiếu, VN-Index, toàn bộ BCTC quý hoặc toàn bộ tin tức.
-
-### Có cần tải BCTC của từng mã thủ công không?
-
-**Không cần tải lại toàn bộ BCTC năm lịch sử từng mã.** StockInsight có cơ chế dùng các file Parquet chung theo sàn HSX/HNX. Chương trình kiểm tra cache trước, chỉ tải file Parquet chưa có, sau đó lọc dữ liệu theo mã và năm. Một bộ file đã tải có thể được tái sử dụng cho nhiều mã trên cùng sàn.
-
-Nếu muốn **tải trước toàn bộ 6 file BCTC năm của HSX/HNX**, nhấp đúp:
-
-```text
-08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd
-```
-
-Đây là **tùy chọn**, không bắt buộc để mở ứng dụng hoặc xem các mã VCB/FPT/HPG đã bổ sung vào bộ dữ liệu chung. Chức năng nạp theo mã vẫn cần lấy giá và các dữ liệu khác từ nguồn riêng.
-
-> **Không cần chạy quét giá toàn thị trường** để dùng chức năng này. Các script quét toàn thị trường chỉ dành cho tác vụ nâng cao, có thể mất lâu và phụ thuộc hạn mức API.
-
-## 8. Dữ liệu lưu ở đâu? Máy khác clone GitHub có được gì?
-
-```text
-StockInsight/
-├── vnresearch/                   # Python: nạp, lưu, phân tích, API, PDF
-├── static/                       # Giao diện web
-├── config/                       # Danh sách mã, đối chiếu, nguồn và cấu hình
-├── assets/fonts/                 # Font cần cho báo cáo PDF tiếng Việt
-├── data/
-│   ├── sample/                   # Dữ liệu mẫu đi kèm Git
-│   ├── submission/               # Dữ liệu bản nộp cố định đi kèm Git
-│   ├── local/                    # Dữ liệu chung trên máy sau khi hợp nhất; không lên Git
-│   └── reference/tumiqa/         # Cache BCTC chung; không lên Git
-├── reports/generated/           # PDF/JSON xuất mới; không lên Git
-├── scripts/                     # Script cài đặt / khởi chạy / thu thập
-├── logs/                        # Nhật ký vận hành; không lên Git
-├── requirements.lock.txt        # Thư viện ứng dụng
-├── requirements-market.txt      # Thư viện thu thập trực tuyến
-├── Cai-Dat.cmd
-├── 01-Cai-Bo-Nap.cmd
-├── Mo-Ung-Dung.cmd
-└── Tat-Ung-Dung.cmd
-```
-
-**Điểm cần nhớ:** `data/local/`, `data/reference/`, `logs/`, `tmp/` và các báo cáo người dùng tạo thường nằm trong `.gitignore`. Vì vậy:
-
-- Máy mới có bộ dữ liệu thực tế `submission` trong repository và tự bổ sung vào `local` khi mở giao diện lần đầu. Bộ `sample` chỉ dành cho kiểm thử, không trộn với dữ liệu thực tế.
-- Máy mới **không nhận dữ liệu `local` riêng của máy cũ và cache Tumiqa của máy cũ**. Cần nạp lại các mã riêng khác VCB/FPT/HPG khi cần, hoặc chuyển dữ liệu bằng cách riêng nếu quyền sử dụng nguồn cho phép.
-- Dữ liệu mới được lưu lại và tái sử dụng trên **chính máy mới**; không tự đồng bộ ngược lên GitHub.
-- Không cần dùng database server. StockInsight lưu giá/BCTC bằng Parquet và một số loại thông tin bằng JSON.
-
-## 9. Các file `.cmd` thường dùng
-
-| File | Chức năng | Khi nào chạy? |
+| Khi nào | Chạy gì | Mục đích |
 |---|---|---|
-| `Cai-Dat.cmd` | Cài thư viện và kiểm tra demo | Lần đầu trên máy mới |
-| `01-Cai-Bo-Nap.cmd` | Cài thêm thư viện nạp trực tuyến | Trước khi nạp mã mới |
-| `Mo-Ung-Dung.cmd` | Khởi động web local | Mỗi khi sử dụng |
-| `Tat-Ung-Dung.cmd` | Dừng web local | Khi muốn thoát/cập nhật source |
-| `08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd` | Tải trước 6 file BCTC năm chung | Tùy chọn |
-| `06-Kiem-Tra-Du-Lieu.cmd` | Kiểm tra dữ liệu đã lưu | Khi cần kiểm tra |
-| `07-Xuat-Bao-Cao-VCB.cmd` | Kiểm tra và tạo lại PDF VCB từ `submission` | Khi cần kiểm thử bản nộp |
+| Lần đầu dựng kho toàn thị trường | `00` → `02` → `04` → `06` | Lấy danh mục → lịch sử giá → BCTC năm → kiểm tra dữ liệu |
+| Sau mỗi phiên giao dịch, khi nguồn đã cập nhật | `03`, sau đó `06` nếu cần | Bổ sung giá các phiên mới, kiểm tra ngày giá cuối |
+| Khi có cổ phiếu mới hoặc danh mục thay đổi | `00`, sau đó `02` và `04` khi cần | Làm mới danh mục và bổ sung dữ liệu cho mã mới |
+| Khi có BCTC năm mới hoặc còn thiếu dữ liệu năm | `04` | Kiểm tra kho hiện có và thử bổ sung BCTC năm |
+| Khi cần vĩ mô, tỷ giá hoặc tin mới | `05` | Cập nhật phần bối cảnh theo nguồn cấu hình |
+| Khi cần BCTC quý mới của một mã | Nạp trên web, tích lựa chọn bổ sung | Thu thập BCTC quý cùng các bước được chọn |
 
-Các script khác như `00-Nap-Danh-Muc-Thi-Truong.cmd`, `02-Nap-Lich-Su-Gia.cmd`, `03-Cap-Nhat-Gia.cmd`, `04-Nap-BCTC.cmd` và `05-Nap-Vi-Mo-Tin-Tuc.cmd` phục vụ thao tác thu thập nâng cao qua CMD. Bạn **không cần chạy tất cả** để xem bộ dữ liệu có sẵn hoặc nạp một mã qua giao diện.
+`00`, `02`, `03`… trong bảng là phần đầu tên file CMD đầy đủ ở mục 4. Không cần chạy lại toàn bộ chuỗi sau mỗi phiên; thông thường chỉ chạy `03` để cập nhật giá. Không có bộ hẹn giờ tự chạy các CMD này.
 
-## 10. Xử lý một số lỗi thường gặp
+### Chuẩn bị danh mục
 
-### `python is not recognized` hoặc không tìm thấy Python
+Chạy **`00-Nap-Danh-Muc-Thi-Truong.cmd`** để cập nhật danh sách cổ phiếu HOSE, HNX, UPCoM vào `data/local/universe.json`. Danh mục là danh sách mã, chưa phải giá hay BCTC. Phạm vi gồm cổ phiếu thường đủ điều kiện theo nguồn; không gồm ETF, chứng quyền, phái sinh hoặc mọi mã từng hủy niêm yết.
 
-Cài Python 3.11, bật PATH, mở lại PowerShell rồi chạy `python --version`. Kiểm tra Windows App Execution Aliases nếu `python` bị chuyển sang Microsoft Store.
+Chạy lại `00` khi cần cập nhật danh mục. CMD quét toàn thị trường dùng danh mục đã lưu; nếu chưa có, chương trình báo cần chạy `00`.
 
-### Mở ứng dụng nhưng trình duyệt không hiện
+### Dựng kho lịch sử giá
 
-Truy cập thủ công **http://127.0.0.1:8001**. Nếu vẫn không được, kiểm tra:
+Chạy **`02-Nap-Lich-Su-Toan-Thi-Truong.cmd`** để lấy lịch sử cho toàn danh mục và VNINDEX, từ `history_start` trong `config/watchlist.json`.
 
-```text
-logs/server-error.log
-logs/server.log
-```
+Tiến độ được lưu theo từng mã/khoảng ngày. Chạy lại cùng lệnh sẽ dùng các khoảng đã hoàn tất hợp lệ và tiếp tục phần còn thiếu. Dữ liệu không trùng theo mã/ngày.
 
-Trong PowerShell (mở tại thư mục dự án):
+Cấu hình hiện tại đặt `history_start` là **2025-01-01**. Muốn lấy từ ngày khác, chỉnh cấu hình trước khi quét hoặc dùng `--start YYYY-MM-DD`. Quét toàn thị trường có thể kéo dài và cần nhiều lượt do hạn mức nguồn; không mặc định hoàn tất trong một lần chạy.
 
-```powershell
-Get-Content .\logs\server-error.log -Tail 80
-```
+### Cập nhật giá sau phiên
 
-### Cổng 8001 đang được sử dụng
+Sau khi phiên kết thúc và nguồn đã có dữ liệu, chạy **`03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd`**. Nên chạy sau 16:00 giờ Việt Nam.
 
-Chạy **`Tat-Ung-Dung.cmd`**, rồi mở lại. Nếu lỗi vẫn còn, cần kiểm tra tiến trình đang dùng cổng 8001 trước khi dừng; không tắt toàn bộ tiến trình Python trên máy.
+Hệ thống lấy vùng gần ngày giá cuối đã lưu, chồng lấn 10 ngày để đối chiếu và bổ sung các phiên mới. Chưa có giá cho một mã thì lấy khoảng mặc định một năm; muốn dựng lịch sử từ ngày cấu hình thì chạy `02`. Chạy lại cùng ngày sẽ tái sử dụng checkpoint hợp lệ.
 
-### Trang hiện phiên bản giao diện cũ
+Ngày cuối được giới hạn theo thời điểm đóng phiên và cuối tuần; ngày nghỉ lễ thực tế phụ thuộc dữ liệu nguồn. Khi có điều chỉnh lịch sử do sự kiện doanh nghiệp, có thể chủ động tải lại khoảng bằng `02 --refresh` sau khi kiểm tra cơ sở giá.
 
-Nhấn **Ctrl + F5**. Nếu cần, dừng ứng dụng, xác nhận bạn đang khởi chạy đúng thư mục đã tải/cập nhật, rồi mở lại.
+### Quét BCTC năm
 
-### Mã cổ phiếu có BCTC nhưng biểu đồ giá hiển thị “Chưa có”
+Chạy **`04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd`** để nạp BCTC năm cho toàn danh mục, từ `first_year` trong cấu hình. Luồng CMD và web dùng chung cách chọn nguồn và quy tắc giữ dữ liệu đã nhập thủ công.
 
-BCTC năm và giá cổ phiếu là **hai nguồn khác nhau**. Hãy chạy **Nạp / cập nhật mã này**, chờ bước **Giá [MÃ]** hoàn thành. Nếu nguồn giá lỗi hoặc giới hạn lượt truy cập, có thể cần nạp lại sau.
+Cấu hình hiện tại đặt `first_year` là **2022**. Lệnh `04` không cập nhật giá và không tự nạp BCTC quý. Khi có báo cáo năm mới, chạy lại `04` để chương trình kiểm tra và thử bổ sung theo dữ liệu nguồn; không cần chạy hằng ngày.
 
-### Nạp một phần (`partial`) hoặc thất bại (`failed`)
+Kết quả được ghi theo từng mã trong `data/local/collection-run.json`, gồm mã hoàn tất, lỗi/cảnh báo và mã còn chờ. Khi nguồn chạm hạn mức, lượt quét dừng và giữ dữ liệu đã lưu. Chạy lại sẽ kiểm tra dữ liệu hiện có, dùng cache hợp lệ và bổ sung phần thiếu; có thể thử lại mã lỗi hoặc kỳ chưa đủ dữ liệu.
 
-Xem **trạng thái của từng bước** ngay dưới khung nạp. Lượt nạp có thể thành công ở BCTC năm và giá nhưng thất bại ở BCTC quý, vĩ mô hoặc tin tức. Những phần đã lưu hợp lệ vẫn được giữ lại; lỗi không đồng nghĩa toàn bộ dữ liệu hỏng. Giữ ứng dụng chạy trong khi tác vụ nạp đang thực hiện.
+**CMD này chỉ quét BCTC năm.** BCTC quý hiện nạp từng mã trên web; chưa có CMD quét quý toàn thị trường. Nguồn có thể không chứa một mã/năm hoặc không trả đủ chỉ tiêu; quét hết danh mục không đồng nghĩa mọi BCTC đầy đủ.
 
-### `charmap codec can't encode character`
+### Cập nhật vĩ mô, tỷ giá và tin tức
 
-Đây thường là lỗi mã hóa đầu ra trên Windows khi chương trình ghi tiếng Việt vào log. Hãy chắc chắn GitHub đã chứa bản cập nhật **UTF-8** của `scripts/Start.ps1`, `vnresearch/__main__.py` và `vnresearch/console.py`; dừng/mở lại ứng dụng sau khi cập nhật. Nếu lỗi vẫn còn, kiểm tra log và phiên bản thư viện.
+Chạy **`05-Nap-Vi-Mo-Tin-Tuc.cmd`** khi cần cập nhật bối cảnh phân tích. Lệnh này lấy vĩ mô, tỷ giá, tin cho nhóm mã yêu cầu và các kênh RSS đã cấu hình; không cập nhật giá hay BCTC.
 
-### Không xuất được PDF tiếng Việt
+Nhấp đúp `05` sẽ dùng nhóm `symbols` trong `config/watchlist.json`, hiện là **VCB, FPT, HPG**, cho bước lấy tin theo mã. Đây là **nhóm mã cấu hình**, khác với **toàn danh mục thị trường** trong `data/local/universe.json` mà `02`, `03`, `04` sử dụng. Thu thập RSS vẫn theo các kênh trong `config/news_feeds.json`; lệnh `05` không quét tin từng mã của toàn thị trường.
 
-Xác nhận thư mục **`assets/fonts/`** có các font DejaVu cần thiết và đã được đưa lên GitHub. Thư mục này không nên bị bỏ đi khi đóng gói source.
-
-## 11. Kiểm tra sau khi cài đặt (tùy chọn)
-
-Mở PowerShell tại thư mục gốc rồi chạy:
+Muốn chỉ định nhóm mã cho bước lấy tin, chạy:
 
 ```powershell
+.\05-Nap-Vi-Mo-Tin-Tuc.cmd --symbols SSI NLG
+```
+
+### Kiểm tra và làm mới giao diện sau khi quét
+
+Chạy **`06-Kiem-Tra-Du-Lieu.cmd`** để đọc thống kê độ đầy đủ và kết quả kiểm tra tính toàn vẹn trong cửa sổ lệnh. Lệnh này không tải dữ liệu mới và không sửa các file đã lưu. Có thể dùng nút **Kiểm tra dữ liệu đã lưu** trên web để xem bảng độ đầy đủ; kiểm tra manifest/file bằng CMD có thêm kết quả xác minh tính toàn vẹn.
+
+Sau khi CMD hoàn tất, mở ứng dụng hoặc bấm **Xem phân tích** / tải lại trang nếu web đang mở. Một mã xuất hiện trong danh mục chưa bảo đảm đã có giá/BCTC; đối chiếu ngày cuối và các kỳ còn thiếu trong bảng kiểm tra.
+
+### Giới hạn phạm vi khi cần
+
+Chạy từ PowerShell trong thư mục dự án:
+
+```powershell
+# Xem trước kế hoạch, không gọi API và không nạp dữ liệu.
+.\02-Nap-Lich-Su-Toan-Thi-Truong.cmd --limit 3 --dry-run
+.\04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd --limit 3 --dry-run
+
+# Chỉ quét HOSE hoặc thử ba mã đầu danh mục.
+.\02-Nap-Lich-Su-Toan-Thi-Truong.cmd --exchanges HOSE
+.\04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd --limit 3
+
+# Chỉ cập nhật giá hoặc BCTC năm cho nhóm mã chỉ định.
+.\03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd --symbols FPT HPG
+.\04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd --symbols SSI NLG
+
+# Lấy lịch sử giá từ một ngày khác ngày cấu hình.
+.\02-Nap-Lich-Su-Toan-Thi-Truong.cmd --symbols FPT --start 2024-01-01
+```
+
+Các bộ xử lý vẫn hỗ trợ `--symbols` để bảo trì một nhóm cụ thể; tham số này ưu tiên hơn phạm vi toàn thị trường. Sử dụng thông thường: nạp từng mã trên web, quét toàn danh mục bằng CMD.
+
+## 4. Danh sách CMD hiện tại
+
+| File | Chức năng |
+|---|---|
+| `Cai-Dat.cmd` | Cài đầy đủ thư viện ứng dụng và bộ nạp |
+| `Mo-Ung-Dung.cmd` | Mở server và trình duyệt |
+| `Tat-Ung-Dung.cmd` | Dừng server do script dự án mở |
+| `00-Nap-Danh-Muc-Thi-Truong.cmd` | Cập nhật danh mục ba sàn |
+| `02-Nap-Lich-Su-Toan-Thi-Truong.cmd` | Dựng kho lịch sử giá toàn danh mục |
+| `03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd` | Cập nhật giá toàn danh mục sau phiên |
+| `04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd` | Quét BCTC năm toàn danh mục |
+| `05-Nap-Vi-Mo-Tin-Tuc.cmd` | Công cụ bổ trợ: vĩ mô, tỷ giá và tin theo nguồn/nhóm mã cấu hình |
+| `06-Kiem-Tra-Du-Lieu.cmd` | Chỉ đọc và kiểm tra độ đầy đủ/tính toàn vẹn dữ liệu |
+| `09-Kiem-Tra-Va-Sua-BCTC-Toan-Nganh.cmd` | Chuẩn hóa lại BCTC quý đã lưu, ghi báo cáo toàn ngành; không gọi mạng |
+| `10-Bo-Sung-Du-Lieu-Nen-2021.cmd` | Bổ sung năm nền từ cache có sẵn; mặc định 2021, thực tế là `first_year - 1` |
+| `_python.cmd` | Bộ chạy Python chung cho các CMD; không cần nhấp đúp riêng |
+
+`05`, `06`, `09`, `10` là công cụ bổ trợ, không bắt buộc chạy sau mỗi phiên. `06` không sửa dữ liệu; `09` có sửa ánh xạ và tạo bản sao lưu. `10` lưu dữ liệu nền riêng để hỗ trợ ROA/ROE/tăng trưởng năm đầu, không ghi đè BCTC chính và không tạo thêm năm báo cáo hiển thị.
+
+## 5. Dữ liệu trên máy và tính tái lập
+
+### Mỗi máy phải chủ động xây dựng kho dữ liệu
+
+Source code là phần chương trình xử lý và hiển thị; dữ liệu giá, BCTC, tin tức và vĩ mô là phần được thu thập riêng. GitHub không chứa kho `data/local/` của người đã quét và cũng không chứa cache BCTC `data/reference/` của máy đó.
+
+Trên máy mới, thực hiện theo nhu cầu:
+
+1. **Nghiên cứu từng cổ phiếu:** cài đặt, mở web → **Tổng quan đầu tư** → nhập mã → bấm **Nạp / cập nhật mã này**. Tích bổ sung nếu cần BCTC quý, vĩ mô và tin tức. Lặp lại với các mã muốn nghiên cứu.
+2. **Xây kho toàn thị trường:** cài đặt → chạy lần lượt `00-Nap-Danh-Muc-Thi-Truong.cmd`, `02-Nap-Lich-Su-Toan-Thi-Truong.cmd`, `04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd` → kiểm tra bằng `06-Kiem-Tra-Du-Lieu.cmd`. Chạy `05-Nap-Vi-Mo-Tin-Tuc.cmd` khi cần bối cảnh; BCTC quý vẫn nạp theo mã trên web.
+
+Ví dụ: bạn đã quét SSI trên máy A, nhưng người khác tải source lên máy B thì **không tự có dữ liệu SSI của máy A**. Người đó phải nạp SSI trên web hoặc quét bằng CMD ở máy B. Một danh sách mã cổ phiếu chỉ cho biết những mã có thể chọn/quét; chưa phải bộ giá và BCTC của các mã đó.
+
+Dữ liệu tải xong được giữ trong `data/local/` của máy đang chạy. Không phải tải lại toàn bộ mỗi lần mở ứng dụng: các lần sau đọc phần đã lưu và chủ động cập nhật/bổ sung khi cần. Nếu xóa kho này hoặc chuyển sang thư mục dự án mới mà không mang dữ liệu theo, cần nạp lại phần dữ liệu muốn sử dụng. Các phần dữ liệu thiếu do nguồn không cung cấp vẫn được báo thiếu; không có cam kết quét một lần là đủ mọi chỉ tiêu.
+
+Cache Tumiqa được chương trình tự tải từ nguồn tham khảo khi cần, rồi giữ trên máy để tái sử dụng. Không cần xin cache riêng từ tác giả hoặc tự tìm file dữ liệu để đặt vào dự án. Lượt tải đầu cần Internet; nguồn trực tuyến có thể yêu cầu tài khoản/quyền truy cập và chịu hạn mức.
+
+### Phân biệt các thư mục dữ liệu
+
+| Vị trí | Vai trò |
+|---|---|
+| `data/local/` | Kho làm việc do mỗi máy nạp; không đi kèm GitHub ngoài file giữ thư mục. Web và CMD cùng đọc/ghi vào đây |
+| `data/submission/` | Bản dữ liệu thực tế cố định đi kèm source để tham khảo/tái lập; chỉ đọc. Bổ sung phần thiếu vào local lần đầu, không thay cho việc nạp dữ liệu cần dùng |
+| `data/sample/` | Dữ liệu mẫu cho kiểm tra cài đặt/kiểm thử; không trộn vào local |
+| `data/reference/tumiqa/` | Cache BCTC không đi kèm GitHub; tự tải khi cần và giữ lại để dùng tiếp |
+| `reports/generated/` | PDF và JSON phân tích xuất mới |
+| `output/pdf/` | Báo cáo VCB cố định đã đóng gói |
+| `logs/` | Nhật ký server |
+
+Một mã được quét bằng CMD có thể xem ngay trên web; dữ liệu nạp trên web cũng được CMD sử dụng. Sau khi CMD hoàn tất, bấm **Xem phân tích** hoặc tải lại trang để cập nhật danh sách/hiển thị.
+
+“Dùng chung” ở đây là web và CMD dùng cùng kho trên **cùng máy, cùng thư mục dự án**. Các máy khác nhau có kho local riêng, không tự đồng bộ với nhau. Source trên GitHub không chứa dữ liệu cá nhân bạn đã quét; máy mới sẽ dùng dữ liệu đóng gói và tự nạp bổ sung.
+
+Dữ liệu local được ưu tiên khi hợp nhất bộ đóng gói; không ghi đè dữ liệu cá nhân đã có. Chỉ VCB có nhận định đã đối soát trong phạm vi ghi ở báo cáo; các mã khác chưa mặc nhiên được đối soát toàn bộ.
+
+### Tái lập trên máy khác
+
+Máy khác tải đủ source, `config/`, `assets/fonts/`, `data/sample/`, `data/submission/` và các `requirements*.txt`, chạy `Cai-Dat.cmd`, **sau đó tự nạp dữ liệu bằng web hoặc CMD**. Không phụ thuộc thư mục cache hay đường dẫn riêng của máy tác giả. `data/local/` và `data/reference/` bị Git bỏ qua, được tạo khi cần. Tải lại source không tự lấy về dữ liệu mà bạn hoặc thành viên khác đã quét.
+
+`vnstock==4.0.8`, `vnai==2.6.1` được ghim; kho Tumiqa dùng `reference_commit` trong cấu hình. Cùng source/cấu hình và cùng bản dữ liệu cho cùng quy tắc tính toán. API trực tuyến có thể thay đổi dữ liệu theo ngày tải: muốn tái lập chính xác một báo cáo, giữ dữ liệu gốc, manifest, cấu hình và JSON phân tích cùng phiên bản source. SHA-256 xác nhận file không đổi, không xác nhận nguồn đã đúng.
+
+## 6. Nguồn, chỉ tiêu và giới hạn
+
+- Giá KBS là dữ liệu ngày; cổ phiếu được đổi sang VND, VNINDEX giữ đơn vị điểm. Chưa đối soát mọi sự kiện điều chỉnh giá doanh nghiệp.
+- BCTC năm ghim Tumiqa và VCI dự phòng; bản dữ liệu tự động đáng ngờ chỉ thay khi nguồn mới được kiểm tra, có sao lưu. CSV đối soát thủ công không bị tự thay.
+- Ngân hàng dùng tổng thu nhập hoạt động; công ty chứng khoán dùng doanh thu hoạt động; doanh nghiệp khác dùng doanh thu thuần theo quy tắc ngành. Không tự điền 0 cho số thiếu.
+- BCTC quý giữ kỳ nguồn; chưa xác minh mọi kỳ là quý riêng hay lũy kế, không tự cộng TTM hoặc tính ROE quý.
+- Vĩ mô dùng URL đã cấu hình trong `config/sources.json`; nguồn cũ không tự biến thành kỳ công bố mới.
+- CafeF RSS lưu tiêu đề, tóm tắt, ngày và URL. Phân loại mã/ngành được đánh dấu chưa đối soát; không coi metadata là nội dung đã xác minh. Cấu hình kênh ở `config/news_feeds.json`.
+- Đọc phân tích/xuất PDF không tự nạp mạng. Giá mục tiêu và kịch bản P/E–P/B không hiển thị trên giao diện/PDF; chỉ số lịch sử còn dùng khi có cơ sở dữ liệu.
+
+Xem [quy cách nhập CSV/JSON](docs/DATA_GUIDE.md), [kho BCTC Tumiqa](docs/KHO_BCTC_TUMIQA.md), [chuẩn hóa BCTC và tái lập](docs/SUA_BCTC_VA_TAI_LAP.md), [nguồn dữ liệu](docs/SOURCES.md) và [bản VCB cố định](docs/CHAY_BAN_NOP.md). Giấy phép tham khảo: [MIT của vn-annual-report-miner](licenses/vn-annual-report-miner-MIT.txt), [font DejaVu](assets/fonts/LICENSE_DEJAVU).
+
+## 7. Khi gặp lỗi
+
+- **Python không tìm thấy:** cài Python 3.11, bật PATH, đóng/mở lại cửa sổ lệnh rồi kiểm tra `python --version`.
+- **Cài thư viện lỗi:** kiểm tra mạng/thông báo lỗi và chạy lại `Cai-Dat.cmd`; bộ cài báo thất bại nếu bộ nạp chưa cài xong.
+- **Không mở được web:** xem `logs/server-error.log` và `logs/server.log`. Nếu cổng 8001 đã dùng, dừng ứng dụng bằng `Tat-Ung-Dung.cmd` trước khi mở lại.
+- **Giao diện cũ:** nhấn Ctrl+F5; dừng/mở server sau khi cập nhật source.
+- **Partial/failed:** xem lỗi từng nguồn/mã, giữ dữ liệu đã lưu và chạy lại khi nguồn cho phép. Lỗi nguồn tùy chọn không đồng nghĩa mã chính hoàn toàn thất bại; thiếu chỉ tiêu vẫn được báo rõ.
+- **Hết hạn mức API:** đợi nguồn khôi phục hạn mức rồi chạy lại cùng CMD hoặc nạp lại trên web. Không liên tục mở thêm lượt quét.
+- **Không xuất được PDF tiếng Việt:** giữ đủ `assets/fonts/` và cài lại thư viện nếu cần.
+
+## 8. Cập nhật source từ GitHub
+
+Dừng server bằng **`Tat-Ung-Dung.cmd`** trước khi thay source. Nếu đang nạp, đợi lượt nạp kết thúc trước khi dừng.
+
+- **Nếu đã clone bằng Git:** mở PowerShell trong thư mục dự án và chạy `git pull --ff-only`. Nếu Git báo có thay đổi local hoặc nhánh không thể cập nhật trực tiếp, xử lý các thay đổi đó trước; không ghi đè source đang chỉnh để ép cập nhật.
+- **Nếu tải bằng ZIP:** tải ZIP mới và giải nén ra một thư mục mới. Nếu muốn giữ kho đã nạp, sao chép `data/local/` từ bản cũ sang đúng vị trí của bản mới; có thể sao chép thêm `data/reference/` để dùng lại cache BCTC. Giữ bản cũ cho đến khi kiểm tra bản mới hoạt động và đối chiếu các cấu hình bạn đã tùy chỉnh.
+
+Sau khi cập nhật, chạy lại **`Cai-Dat.cmd`** để đồng bộ thư viện, rồi **`Mo-Ung-Dung.cmd`**. Nếu trình duyệt vẫn hiện giao diện cũ, nhấn **Ctrl+F5**. Thay source không tự cập nhật giá hay BCTC; vẫn dùng web hoặc các CMD nạp dữ liệu tương ứng.
+
+## 9. Bảo trì và tái tạo bản cố định
+
+Lệnh bên dưới chỉ dành cho người bảo trì; không cần để sử dụng thường ngày:
+
+```powershell
+# Kiểm tra dữ liệu đóng gói và tái tạo PDF VCB từ bộ cố định.
 .\_python.cmd -m vnresearch verify --mode submission
-.\_python.cmd -m vnresearch analyze VCB --mode submission
-.\_python.cmd -m vnresearch report VCB --mode submission
+if ($LASTEXITCODE -eq 0) {
+    .\_python.cmd -m vnresearch report VCB --mode submission --output output/pdf/VCB_Bao_cao_2026-10-09.pdf
+}
+
+# Tải sẵn cache Tumiqa nếu chủ động cần.
+.\_python.cmd -m vnresearch.reference_cache --exchange HSX HNX
+
+# Xem trước việc bổ sung năm nền, không ghi dữ liệu.
+.\10-Bo-Sung-Du-Lieu-Nen-2021.cmd --dry-run
 ```
 
-Bước 1 kiểm tra tính toàn vẹn các file trong manifest; bước 2 tạo snapshot kết quả phân tích và bước 3 tạo báo cáo PDF. Kết quả mặc định sẽ nằm trong `reports/generated/`.
-
-Bạn cũng có thể xem tài liệu API của ứng dụng sau khi server chạy tại **http://127.0.0.1:8001/api/docs**.
-
-## 12. Checklist dành cho người đăng dự án lên GitHub
-
-Trước khi gửi link cho người khác, người quản lý dự án nên kiểm tra:
-
-- [ ] Đã commit đầy đủ **source code**, `static/`, `vnresearch/`, `scripts/`, các file `.cmd` và `requirements*.txt`.
-- [ ] Đã commit **`data/sample/` và `data/submission/`**, gồm manifest và dữ liệu Parquet/JSON cần dùng.
-- [ ] Đã commit **`assets/fonts/`** và tài liệu giấy phép tương ứng.
-- [ ] **Không** commit token, `.env`, dữ liệu cá nhân, `data/local/`, `data/reference/`, `.venv/`, `tmp/`, `logs/` và cache.
-- [ ] Đã thử **clone vào một thư mục mới hoặc trên máy khác**, chạy `Cai-Dat.cmd`, `Mo-Ung-Dung.cmd`, xem VCB và xuất PDF.
-- [ ] Nếu muốn người dùng nạp mã mới, đã thử `01-Cai-Bo-Nap.cmd` và một lượt nạp qua giao diện có Internet.
-- [ ] Đã ghi rõ các giới hạn của BCTC quý, độ cập nhật tin/vĩ mô và mức đối soát của báo cáo.
-
-## 13. Nguồn tham khảo và giới hạn dữ liệu
-
-- Kho BCTC năm lịch sử: [Tumiqa/vn-annual-report-miner](https://github.com/Tumiqa/vn-annual-report-miner). Các file Parquet nguồn được quản lý theo commit được cấu hình; nguồn này không thay thế việc đối soát với công bố chính thức của doanh nghiệp.
-- Giá cổ phiếu và VN-Index: các nguồn do KBS/vnstock hỗ trợ, tùy tính khả dụng của SDK và quyền truy cập nguồn.
-- Vĩ mô, tỷ giá và tin tức: nguồn cấu hình trong `config/sources.json`.
-- Xem thêm `THIRD_PARTY_NOTICES.md`, `docs/SOURCES.md`, `docs/NAP_THEO_MA.md` và `docs/CHAY_BAN_NOP.md`.
-
-> **Cảnh báo sử dụng:** Đây là công cụ hỗ trợ nghiên cứu và học tập, không phải hệ thống khuyến nghị đầu tư được xác thực độc lập. Bản thân việc tải xong dữ liệu không đảm bảo mọi kỳ tài chính, ngành, giá, tin tức hoặc giả định định giá đều chính xác và đầy đủ.
-
-
-## Nâng cấp: CafeF RSS theo vĩ mô, ngành và mã cổ phiếu
-
-Mở **Nạp dữ liệu theo mã**, nhập mã (ví dụ VCB) rồi chọn **Cập nhật tin CafeF theo ngành / mã**. Lệnh chỉ cập nhật RSS, không tải lại giá hay BCTC. Tin được thu từ các nguồn RSS chính thức của CafeF được khai báo tại `config/news_feeds.json`, tối đa 25 bài mỗi kênh cho một lượt bấm. Lệnh **Nạp / cập nhật mã này** với tùy chọn BCTC quý, vĩ mô và tin tức cũng sẽ bổ sung RSS.
-
-Tin chỉ lưu tiêu đề, tóm tắt ngắn, ngày công bố và URL, không sao chép toàn văn. Một tin có thể gắn nhiều mã (`symbols`), nhiều ngành (`sectors`), phân loại `company`, `sector`, `macro` hoặc `market`. Tự phân loại được đánh dấu `auto_unverified`, phải đọc nguồn trước khi sử dụng. `data/local/news.json` lưu tin và metadata; bộ số liệu vĩ mô định lượng chính thức vẫn nằm trong `data/local/macro.json`. Mở **Vĩ mô & ngành** để xem tin vĩ mô/tin ngành, **So sánh & tin tức** để xem tin doanh nghiệp. Tin không phù hợp không được gán mặc định cho cổ phiếu.
-
-Các bài cũ có `symbol` tiếp tục đọc được; dữ liệu RSS không ghi đè tóm tắt đã đối soát. Máy mới cần chạy `01-Cai-Bo-Nap.cmd` để cài `requests`. Nếu nguồn RSS báo lỗi mạng, giới hạn truy cập hoặc đổi định dạng, bảng tiến độ hiển thị `partial`/`failed` và giữ dữ liệu đã lưu. Có thể thêm bí danh đã xác minh bằng mảng `news_aliases` trong hồ sơ doanh nghiệp tại `data/local/companies.json`. Cần ghi nguồn theo CafeF và tuân thủ điều kiện sử dụng RSS của nhà xuất bản tại https://cafef.vn/index.rss.
-
-Danh mục `config/company_sectors.json` cung cấp ánh xạ ngành **tham khảo** cho các mã phổ biến. Nếu hồ sơ doanh nghiệp đã có ngành cụ thể, chương trình ưu tiên ngành đó. Ánh xạ tham khảo không phải phân ngành niêm yết đã được kiểm chứng.
-
-
-## Sửa BCTC thiếu chỉ tiêu và tái lập trên máy mới
-
-BCTC quý mới dùng VCI; BCTC năm kiểm tra chỉ tiêu/kỳ thiếu và dữ liệu tự động đáng ngờ rồi nạp nguồn VCI thay thế khi cần. Cache quý cũ được nhận diện lại bằng bộ chuẩn hóa có phiên bản; cache KBS có cảnh báo lệch kỳ và cần nạp lại. Dữ liệu CSV nhập thủ công được giữ nguyên; không thay số thiếu bằng 0. Đã kiểm tra nạp trực tuyến SSI vào thư mục dữ liệu trống, không dựa vào cache của tác giả.
-
-Máy mới chạy `Cai-Dat.cmd`, `01-Cai-Bo-Nap.cmd`, rồi nạp qua giao diện hoặc `_python.cmd` theo hướng dẫn chi tiết trong [Sửa BCTC và tái lập](docs/SUA_BCTC_VA_TAI_LAP.md). Cần commit các file source sửa và `requirements-market.txt`; không cần đưa `data/local/` hay cache lên GitHub. Phiên bản SDK được ghim `vnstock==4.0.8`, `vnai==2.6.1`.
+Bộ kiểm thử ở `tests/`; các công cụ dựng mẫu và kiểm tra portable ở `scripts/`. Không đưa `.venv/`, `.env`, API key, `tmp/`, `logs/` hoặc dữ liệu local cá nhân lên GitHub.

@@ -1,5 +1,11 @@
 param([switch]$Market, [switch]$Dev)
+# -Market remains accepted for old callers; the installer always includes it.
 $ErrorActionPreference = 'Stop'
+$env:PYTHONUTF8 = '1'
+$env:PYTHONIOENCODING = 'utf-8'
+$env:VNSTOCK_DISABLE_AGENT_SETUP = '1'
+$env:VNSTOCK_DISABLE_GLOBAL_AGENT = '1'
+$env:VNSTOCK_AGENT_TARGETS = 'none'
 Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 $taskPython = Get-Command python -ErrorAction SilentlyContinue
 if (-not $taskPython) { throw 'Can cai Python 3.11 tu python.org, them Python vao PATH roi chay lai.' }
@@ -13,10 +19,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 & (Join-Path $taskVenv 'Scripts\Activate.ps1')
 python -m pip install -r requirements.lock.txt
 if ($LASTEXITCODE -ne 0) { throw 'Cai thu vien that bai. Kiem tra mang va phien ban Python.' }
-if ($Market) {
-    python -m pip install -r requirements-market.txt
-    if ($LASTEXITCODE -ne 0) { throw 'Cai vnstock that bai. Demo offline van dung duoc.' }
-}
+python -m pip install -r requirements-market.txt
+if ($LASTEXITCODE -ne 0) { throw 'Cai bo nap du lieu that bai. Kiem tra mang va chay lai Cai-Dat.cmd.' }
 if ($Dev) {
     python -m pip install -r requirements-dev.txt
     if ($LASTEXITCODE -ne 0) { throw 'Cai thu vien kiem thu that bai.' }

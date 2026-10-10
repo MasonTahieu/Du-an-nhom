@@ -11,13 +11,12 @@ Dữ liệu đang cập nhật vẫn ở data/local, không đưa vào Git.
 2. Tải/clone toàn bộ dự án, giữ nguyên assets/fonts và data/submission.
 3. Chạy Cai-Dat.cmd một lần để cài thư viện (cần Internet).
 4. Chạy Mo-Ung-Dung.cmd, mở http://127.0.0.1:8001.
-5. Chọn “Bản VCB đã đối soát · 09/10/2026”, mã VCB; bấm Xuất báo cáo PDF.
+5. Chọn mã VCB; bấm Xuất báo cáo PDF. Giao diện dùng local, có thể chứa dữ liệu mới hơn bộ cố định.
 
 Sau khi cài thư viện, xem phân tích và xuất PDF chạy offline. Không chạy các CMD nạp 00–05 cho bản nộp.
 Các lần mở sau chỉ cần Mo-Ung-Dung.cmd. Nếu trình duyệt còn giao diện cũ, nhấn Ctrl+F5.
 
-Có thể chạy 07-Xuat-Bao-Cao-VCB.cmd để kiểm tra dữ liệu và tạo lại PDF từ bộ cố định.
-PDF được ghi tại output/pdf/VCB_Bao_cao_2026-10-09.pdf.
+Để tái tạo PDF từ đúng bộ cố định `submission`, dùng các lệnh bảo trì trong [README](../README.md#8-bảo-trì-và-tái-tạo-bản-cố-định). Kết quả được ghi tại output/pdf/VCB_Bao_cao_2026-10-09.pdf; không dùng dữ liệu local để mặc nhiên coi là bản cố định.
 
 ## Tính tái lập và giới hạn
 

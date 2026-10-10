@@ -27,8 +27,8 @@ Tải sẵn kho chung (không nhập toàn bộ vào financials):
 python -m vnresearch.reference_cache --exchange HSX HNX
 ```
 
-Hoặc trên Windows chạy `08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd` sau khi cài thư viện theo
-`Cai-Dat.cmd`. Tải BCTC năm chỉ dùng Python chuẩn và pandas/pyarrow; không yêu cầu vnstock, requests hay Hugging Face token.
+Bộ nạp tự chuẩn bị cache khi cần. Cài đầy đủ thư viện trên Windows bằng
+`Cai-Dat.cmd`; thao tác sử dụng được ghi trong [README](../README.md). Tải BCTC năm chỉ dùng Python chuẩn và pandas/pyarrow; không yêu cầu vnstock, requests hay Hugging Face token.
 
 ## Khi nào vẫn cần mạng?
 

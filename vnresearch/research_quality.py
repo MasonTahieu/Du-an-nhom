@@ -19,6 +19,7 @@ def audit_financial_rows(rows, sector):
         period = str(row.get("period", ""))
         row.setdefault("quality_status", "unreviewed")
         row.setdefault("quality_notes", [])
+        row.setdefault("quality_issues", [])
         if sector == "securities" and row.get("revenue") == 0 and (row.get("net_income") or 0) > 0:
             row["revenue"] = None
             row["quality_notes"].append("Không xác định được doanh thu/thu nhập hoạt động; giá trị 0 không đủ cơ sở.")
@@ -37,6 +38,7 @@ def audit_financial_rows(rows, sector):
                 row[key] = None
             row["quality_status"] = "suspect_duplicate_year"
             row["quality_notes"].append(note)
+            row["quality_issues"].append(note)
             issues.append(note)
     # A later year depending on an excluded opening balance also cannot have
     # trustworthy growth / average-asset ROE/ROA, even if its own figures differ.

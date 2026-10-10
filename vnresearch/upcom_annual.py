@@ -92,6 +92,22 @@ def fetch_annual_vci(store: Store, ticker, *, first_year=2022, fetch=None):
     lacks enough rows; previous financials.parquet is never deleted.
     """
     ticker=symbol(ticker)
+    # Valid current saved years are reused on reruns, including manual input.
+    from .analysis import financial_rows
+    from .financial_policy import required_missing
+    from .peers import map_sector
+    old=store.read("financials.parquet")
+    profile=store.read_json("companies.json",{}).get(ticker,{})
+    industry=store.read_json("industry_catalog.json",{}).get("symbols",{}).get(ticker,{})
+    sector=map_sector(ticker,profile,industry)
+    rows=financial_rows(old,ticker,sector)
+    expected={str(year) for year in range(int(first_year),datetime.now(timezone.utc).year)}
+    valid={r["period"] for r in rows if not required_missing(r,sector)
+           and r.get("liabilities") is not None
+           and math.isclose(r["assets"]-r["liabilities"],r["equity"],rel_tol=1e-5,abs_tol=1)}
+    if expected and expected <= valid:
+        return {"status":"complete", "source":"local_cache", "added_years":[],
+                "cached_years":sorted(valid), "available_years":sorted(valid)}
     fetch=fetch or _fetch
     frames=[]
     try:
@@ -103,7 +119,7 @@ def fetch_annual_vci(store: Store, ticker, *, first_year=2022, fetch=None):
                 time.sleep(5)
             frames.append(_normalize(fetch(ticker,statement),ticker,statement))
     except (Exception,SystemExit) as exc:
-        return {"status":"partial","failed":[{"symbol":ticker,"error":
+        return {"status":"rate_limited" if isinstance(exc,SystemExit) else "partial","failed":[{"symbol":ticker,"error":
             f"VCI chưa cung cấp đủ BCTC năm hoặc đã đổi cấu trúc ({type(exc).__name__}: {exc}). Giữ dữ liệu cũ."}]}
     combined=pd.concat(frames,ignore_index=True)
     good=[]

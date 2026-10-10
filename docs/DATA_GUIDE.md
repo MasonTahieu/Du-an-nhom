@@ -1,4 +1,6 @@
-> Quy trình nạp hiện tại: xem [MANUAL_RUN.md](MANUAL_RUN.md). Khởi tạo bằng CMD nạp nguồn thật; seed-local chỉ là tiện ích sao chép demo khi chủ động cần.\n\n# Nạp dữ liệu thủ công
+> Quy trình nạp trên web và CMD: xem [README](../README.md). Tài liệu này mô tả quy cách dữ liệu nhập thủ công.
+
+# Nạp dữ liệu thủ công
 
 Nạp vào **local**. Bộ demo có sẵn để chạy ứng dụng và xuất PDF; không cần nạp toàn thị trường.
 
@@ -35,7 +37,7 @@ python -m vnresearch reference --repo "PATH/vn-annual-report-miner" --symbols VC
 symbol,period,item_code,value,unit,scope,source_url
 ~~~
 
-period = năm YYYY. **Không trộn số quý hoặc lũy kế vào chuỗi năm.** Muốn phân tích quý/TTM cần thêm mô hình chuẩn hóa riêng, bản này chưa triển khai.
+period = năm YYYY. **Không trộn số quý hoặc lũy kế vào chuỗi năm.** BCTC quý có mô hình chuẩn hóa riêng từ nguồn VCI; mẫu CSV này chỉ dùng cho BCTC năm. Chưa tự tính TTM quý.
 
 | item_code ngắn | Nội dung | Đơn vị |
 | --- | --- | --- |

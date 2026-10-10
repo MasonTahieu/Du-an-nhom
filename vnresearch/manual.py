@@ -15,6 +15,9 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
         if dry_run: return {"kind":kind,"note":"Sẽ lấy danh mục ba sàn khi chạy thật."}
         from .universe import fetch_universe
         return fetch_universe(store)
+    if kind == "check":
+        from .quality import readiness
+        return readiness(store)
     all_market = all_market and not tickers
     if all_market:
         from .universe import market_symbols
@@ -29,9 +32,6 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
         raise ValueError("Tin tức nạp theo mã đang phân tích; dùng --symbols cho nhóm tin.")
     if all_market and kind=="financials" and not annual_only:
         raise ValueError("BCTC toàn danh mục: dùng --annual-only. Quý mới nạp theo --symbols.")
-    if kind == "check":
-        from .quality import readiness
-        return readiness(store)
     if kind == "history":
         from .history import plan, prepare_history
         selected = list(dict.fromkeys(selected+[settings.get("benchmark","VNINDEX")]))
@@ -41,48 +41,67 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
         return prepare_history(store,selected,begin,end,refresh=refresh)
     if dry_run:
         return {"kind":kind,"symbols":selected,"note":"Chỉ xem kế hoạch; chưa gọi nguồn."}
-    from .collectors import init_profiles,fetch_annual_reference,fetch_quarters
+    from .collectors import init_profiles,fetch_annual_for_symbol,fetch_quarters
     init_profiles(store)
-    result = {"kind":kind,"symbols":selected,"started_at":datetime.now(timezone.utc).isoformat(),"steps":{},"failed":[]}
+    result = {"kind":kind,"symbols":selected,"started_at":datetime.now(timezone.utc).isoformat(),"steps":{},"failed":[],"warnings":[]}
     with process_lock(store.path/".pipeline.lock"):
-        def step(name, fn):
+        def step(name, fn, *, scope="primary"):
             print(name,flush=True)
             try:
                 value=fn()
                 result["steps"][name]=value
                 if isinstance(value,dict):
                     failures = value.get("failed", [])
-                    result["failed"].extend(failures)
                     if value.get("status") in {"partial", "rate_limited", "interrupted"} and not failures:
-                        result["failed"].append({"step": name, "error": "Nguồn chưa đủ chỉ tiêu/kỳ; xem chẩn đoán từng kỳ trong kết quả bước nạp."})
+                        failures = [{"step": name, "error": "Nguồn chưa đủ chỉ tiêu/kỳ; xem kết quả bước nạp."}]
+                    target = "warnings" if scope == "optional" else "failed"
+                    result[target].extend(failures)
+                return value
             except (Exception,SystemExit) as exc:
-                result["failed"].append({"step":name,"error":str(exc)[:500]})
+                issue={"step":name,"error":str(exc)[:500]}
+                target="warnings" if scope == "optional" else "failed"
+                result[target].append(issue)
+                value={"status":"rate_limited" if isinstance(exc,SystemExit) else "partial", "failed":[issue]}
+                result["steps"][name]=value
+                return value
             finally:
                 atomic_json(store.path/"collection-run.json",result)
         if kind == "financials":
             annual_symbols=list(selected)
-            profiles=store.read_json("companies.json",{})
-            for t in selected: annual_symbols.extend(profiles.get(t,{}).get("peers",[]))
-            annual_symbols=list(dict.fromkeys(annual_symbols))
-            catalogue={r["symbol"]:r.get("exchange") for r in store.read_json("universe.json",{}).get("symbols",[])}
-            groups={"HSX":[], "HNX":[]}
-            for ticker in annual_symbols:
-                exchange=catalogue.get(ticker)
-                if exchange=="UPCOM":
-                    result["failed"].append({"symbol":ticker,"error":"Nguồn BCTC năm chưa hỗ trợ UPCoM."})
-                elif exchange in {"HOSE","HSX","HNX"}:
-                    groups["HSX" if exchange in {"HOSE","HSX"} else "HNX"].append(ticker)
-                else:
-                    for group in groups.values(): group.append(ticker)
-            for exchange, codes in groups.items():
-                if not codes: continue
-                step("BCTC năm "+exchange,lambda exchange=exchange,codes=codes:fetch_annual_reference(store,codes,
-                     settings["reference_commit"],exchange,settings["first_year"]))
-            from .financials import repair_annual_sources
-            step("Kiểm tra / bổ sung BCTC năm", lambda: repair_annual_sources(store, annual_symbols,
-                 first_year=settings["first_year"]))
-            if not annual_only:
-                step("BCTC quý",lambda:fetch_quarters(store,selected))
+            # A full-market scan covers exactly its selected catalogue/filter.
+            # Per-ticker CLI use retains optional comparison companies.
+            if not all_market:
+                profiles=store.read_json("companies.json",{})
+                for t in selected: annual_symbols.extend(profiles.get(t,{}).get("peers",[]))
+                annual_symbols=list(dict.fromkeys(annual_symbols))
+            result["completed_symbols"]=[]
+            result["pending_symbols"]=list(annual_symbols)
+            result["total_symbols"]=len(annual_symbols)
+            result["status"]="running"
+            try:
+                for index,ticker in enumerate(annual_symbols,1):
+                    print(f"{index}/{len(annual_symbols)} · BCTC năm {ticker}",flush=True)
+                    failures_before=len(result["failed"])
+                    def annual_step(name, fn, *, scope="primary", ticker=ticker):
+                        value=step(name,fn,scope=scope)
+                        for issue in result["failed"][failures_before:]:
+                            issue.setdefault("symbol",ticker)
+                        return value
+                    value=fetch_annual_for_symbol(store,ticker,settings,step=annual_step)
+                    result["pending_symbols"].remove(ticker)
+                    if len(result["failed"])==failures_before:
+                        result["completed_symbols"].append(ticker)
+                    print(f"{index}/{len(annual_symbols)} · {ticker}: " +
+                          ("hoàn tất" if len(result["failed"])==failures_before else "chưa đầy đủ; xem lỗi"),flush=True)
+                    atomic_json(store.path/"collection-run.json",result)
+                    if isinstance(value,dict) and value.get("status")=="rate_limited":
+                        result["status"]="rate_limited"
+                        break
+                if not annual_only and result["status"]!="rate_limited":
+                    step("BCTC quý",lambda:fetch_quarters(store,selected))
+            except KeyboardInterrupt:
+                result["status"]="interrupted"
+                print("Đã dừng. Dữ liệu đã lưu được giữ; chạy lại để tiếp tục.",flush=True)
         elif kind == "context":
             from .evidence import collect_macro,collect_fx,collect_articles
             from .ingest import fetch_news
@@ -99,7 +118,8 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
                 step("Tin RSS CafeF",lambda:collect_rss_feeds(store))
         else:
             raise ValueError("Nhóm nạp không hợp lệ.")
-    result["status"]="partial" if result["failed"] else "complete"
+    if result.get("status") not in {"rate_limited","interrupted"}:
+        result["status"]="partial" if result["failed"] else "complete"
     result["finished_at"]=datetime.now(timezone.utc).isoformat()
     atomic_json(store.path/"collection-run.json",result)
     return result

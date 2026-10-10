@@ -12,51 +12,17 @@ Bản sửa ngày 09/10/2026 được kiểm tra với Python 3.11, `vnstock==4.
 
 ## Máy mới tải source từ GitHub
 
-1. Tải/clone đủ source, gồm `vnresearch/financials.py`, bộ `config/`, `static/`, `scripts/`, các file `.cmd`, `requirements*.txt`, font và dữ liệu cố định `data/sample/`, `data/submission/`.
-2. Cài Python 3.11 trở lên rồi chạy `Cai-Dat.cmd`.
-3. Chạy `01-Cai-Bo-Nap.cmd` để cài thư viện nạp dữ liệu; mở ứng dụng bằng `Mo-Ung-Dung.cmd`.
-4. Nhập mã SSI, chọn bổ sung BCTC quý và bấm **Nạp / cập nhật mã này**. Luồng năm tái sử dụng kho Tumiqa theo commit trong `config/watchlist.json`, kiểm tra chỉ tiêu/năm còn thiếu và chuyển sang VCI khi cần. Luồng quý lấy ba bảng từ VCI.
-5. Chờ tác vụ hoàn tất, chọn **Xem phân tích**. Lỗi từng nguồn/giới hạn API được ghi trong tiến độ; chạy lại sẽ dùng dữ liệu đã lưu hợp lệ.
+Quy trình cài đặt, nạp từng mã trên web và quét toàn thị trường bằng CMD được tập trung trong [README](../README.md). `Cai-Dat.cmd` cài đầy đủ thư viện ứng dụng và bộ nạp; không cần trình cài bổ sung.
 
-Hoặc mở PowerShell tại thư mục gốc để nạp BCTC năm/quý cho nhóm mã:
+Web và CMD quét BCTC năm dùng chung cách chọn nguồn: Tumiqa cho HSX/HNX, VCI bổ sung khi thiếu; UPCoM thử VCI nếu nguồn có dữ liệu. Dữ liệu `local` và cache được tạo trên máy mới, không cần sao chép cache tác giả. Nguồn trực tuyến vẫn cần Internet, quyền truy cập SDK và hạn mức phù hợp.
 
-```powershell
-.\_python.cmd -m vnresearch.manual financials --symbols SSI
-```
+## Kiểm tra và sửa cache đã có
 
-`data/local/` và `data/reference/` bị Git bỏ qua và được tạo khi cần. Không cần sao chép cache từ máy tác giả hoặc đưa khóa API lên GitHub. Thử trực tuyến trong phiên kiểm tra dùng quyền cộng đồng hiện có, không cần `vnstock_data` hay bộ thư viện dành riêng cho gói tài trợ. Nếu SDK yêu cầu đăng ký trên máy mới hoặc hết hạn mức, làm theo thông báo của SDK; chương trình không bỏ qua hạn mức.
+- `06-Kiem-Tra-Du-Lieu.cmd`: chỉ kiểm tra dữ liệu đã lưu.
+- `09-Kiem-Tra-Va-Sua-BCTC-Toan-Nganh.cmd`: chuẩn hóa lại quý từ cache và lưu báo cáo thiếu dữ liệu toàn ngành, không gọi mạng.
+- `10-Bo-Sung-Du-Lieu-Nen-2021.cmd`: bổ sung năm nền từ cache có sẵn; không sửa BCTC chính.
 
-## Kiểm tra tải từ đầu, không dùng cache tác giả
-
-Chạy lệnh này với tên thư mục mới/chưa có dữ liệu:
-
-```powershell
-.\_python.cmd -m vnresearch repair-financials --symbols SSI --online --data-dir tmp\bctc-may-moi
-```
-
-Lệnh tạo kho `tmp/bctc-may-moi/local/` và tải BCTC năm trực tiếp từ VCI, không cần `data/local/`, `data/reference/`, `data/sample/` hoặc `data/submission/` trên máy tác giả. Không gọi giá, vĩ mô hay tin tức. Trong phiên kiểm tra thực tế, kho trống đã tải đủ các năm 2022–2025 và ba bảng; lần chạy tiếp theo tái sử dụng dữ liệu hợp lệ.
-
-Kiểm thử tự động nạp năm/quý vào thư mục trống, chạy lại không có Internet, khôi phục ánh xạ cache cũ, chống cộng dòng trùng, giữ CSV thủ công và giữ bản cũ khi nguồn lỗi:
-
-```powershell
-.\_python.cmd -m pytest tests/test_financial_repair.py tests/test_manual_pipeline.py tests/test_reference_cache.py tests/test_ondemand.py
-```
-
-Đây là kiểm tra bằng thư mục dữ liệu trống trên máy hiện tại; chưa phải kiểm tra trên một máy vật lý thứ hai.
-
-## Sửa cache đã có và lưu bằng chứng
-
-Chuẩn hóa cache quý đã lưu, không truy cập mạng:
-
-```powershell
-.\_python.cmd -m vnresearch repair-financials
-```
-
-Nạp nguồn năm thay thế nếu có chỉ tiêu/năm thiếu hoặc dữ liệu tự động đáng ngờ:
-
-```powershell
-.\_python.cmd -m vnresearch repair-financials --symbols SSI --online
-```
+Kiểm thử nạp năm/quý vào thư mục trống, giữ dữ liệu thủ công, tái sử dụng cache và bảo toàn bản cũ khi nguồn lỗi nằm trong `tests/`. Các kiểm thử dùng nguồn mô phỏng; không thay cho kiểm tra API thực hoặc chạy trên một máy vật lý thứ hai.
 
 Nạp lại quý qua giao diện hoặc lệnh `manual financials` để thay các kỳ KBS bằng VCI. Dữ liệu gốc, đơn vị, tên chỉ tiêu, URL nguồn và metadata SDK được lưu tại `data/local/raw/financials/`. Dòng chuẩn hóa có `normalization_version`, `ingestion_origin`, và nguồn theo từng dòng; năm từ SDK giữ cả mã chỉ tiêu nguồn `provider_item_code`. Manifest ghi SHA-256. Khi thay năm/quý, các dòng cũ được sao lưu trong `data/local/backups/`; lỗi tải một trong ba bảng không thay dữ liệu đang dùng.
 

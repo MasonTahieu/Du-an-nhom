@@ -47,10 +47,19 @@ def map_sector(ticker, profile=None, industry=None):
         return "securities"
     if "ngan hang" in label or "banks" in label or "banking" in label:
         return "bank"
-    if "san xuat thep" in label or "steel" in label:
-        return "steel"
-    if any(term in label for term in ("vien thong", "telecommunication", "telecom", "wireless", "mobile telecom", "internet service")):
-        return "telecom"
+    # Match the remaining supported analysis sectors when the profile does not
+    # supply one. Keep fallbacks narrow: do not infer sector from news headlines.
+    for sector, keywords in (
+        ("steel", ("san xuat thep", "steel", "iron and steel")),
+        ("telecom", ("vien thong", "telecommunication", "telecom", "wireless", "mobile telecom", "internet service")),
+        ("real_estate", ("bat dong san", "real estate", "property development")),
+        ("retail", ("ban le", "retail")),
+        ("technology", ("cong nghe thong tin", "information technology", "software", "it services")),
+        ("oil_gas", ("dau khi", "oil and gas", "oil & gas", "petroleum exploration")),
+        ("energy", ("san xuat dien", "dien luc", "power generation", "electricity", "renewable energy", "electric utilities")),
+    ):
+        if any(keyword in label for keyword in keywords):
+            return sector
     return "other"
 
 

@@ -5,6 +5,7 @@ from datetime import date
 import pandas as pd
 
 from .storage import ROOT, Store, symbol
+from .financial_policy import accounting_model, required_missing, top_line
 
 FIELDS = {
     "assets": ["bs_tong_tai_san", "bs_tong_cong_tai_san"],
@@ -13,6 +14,7 @@ FIELDS = {
     "current_assets": ["bs_tai_san_ngan_han", "bs_tong_tai_san_ngan_han"],
     "current_liabilities": ["bs_no_ngan_han", "bs_tong_no_ngan_han"],
     "revenue": ["is_doanh_so_thuan", "is_doanh_thu_thuan", "is_doanh_thu_thuan_ve_hoat_dong_kinh_doanh"],
+    "securities_revenue": ["is_doanh_thu_hoat_dong", "is_cong_doanh_thu_hoat_dong"],
     "net_income": ["is_loi_nhuan_sau_thue_thu_nhap_doanh_nghiep", "is_lai_lo_thuan_sau_thue", "is_loi_nhuan_ke_toan_sau_thue", "is_loi_nhuan_sau_thue"],
     "parent_income": ["is_loi_nhuan_cua_co_dong_cua_cong_ty_me", "is_loi_nhuan_sau_thue_cua_co_dong_cong_ty_me", "is_co_dong_cua_cong_ty_me"],
     "cfo": ["cf_luu_chuyen_tien_thuan_tu_cac_hoat_dong_san_xuat_kinh_doanh", "cf_luu_chuyen_tien_thuan_tu_hoat_dong_kinh_doanh"],
@@ -138,8 +140,38 @@ def financial_rows(facts, ticker, sector="other"):
                     evidence[field] = code
                     break
             row.setdefault(field, None)
-        if sector == "bank":
-            row["revenue"] = row["operating_income"]
+        # Historical Parquet and different SDK versions name some items in
+        # different ways. Reuse the strict quarterly mapper as a FALLBACK for
+        # missing annual items across all sectors, never summing aliases.
+        # Conflicting candidate values remain missing until source review.
+        if "item_name" in p:
+            from .financials import canonical_field
+            by_field = {}
+            for record in p.itertuples():
+                code = str(record.item_code)
+                st = getattr(record, "statement", "")
+                if st not in {"balance_sheet", "income_statement", "cash_flow"}:
+                    st = ("balance_sheet" if code.startswith("bs_") else
+                          "income_statement" if code.startswith("is_") else
+                          "cash_flow" if code.startswith("cf_") else "")
+                if not st or pd.isna(record.value):
+                    continue
+                canonical = canonical_field(record.item_name, st, code)
+                if canonical and canonical in FIELDS and row.get(canonical) is None:
+                    by_field.setdefault(canonical, []).append((code, float(record.value)))
+            for field, candidates in by_field.items():
+                unique = {value for _, value in candidates}
+                if len(unique) == 1:
+                    row[field] = next(iter(unique))
+                    evidence[field] = "label:" + candidates[0][0]
+        # Retain original revenue/TOI lines separately. The generic `revenue`
+        # analysis field is the chosen sector-specific top-line metric.
+        line_field, line_value = top_line(row, sector)
+        row["top_line_field"] = line_field
+        row["accounting_model"] = accounting_model(sector)
+        row["revenue"] = line_value
+        if line_field and line_field != "revenue":
+            evidence["revenue"] = evidence.get(line_field, line_field)
         row["evidence"] = evidence
         rows.append(row)
     for i, r in enumerate(rows):
@@ -150,7 +182,10 @@ def financial_rows(facts, ticker, sector="other"):
         avg_assets = (r["assets"] + prev["assets"]) / 2 if consecutive and r["assets"] is not None and prev["assets"] is not None else None
         r["roe"] = safe_div(r["net_income"], avg_equity)
         r["roa"] = safe_div(r["net_income"], avg_assets)
-        r["revenue_growth"] = safe_div(r["revenue"] - prev["revenue"], abs(prev["revenue"])) if consecutive and r["revenue"] is not None and prev["revenue"] is not None else None
+        # Do not compute growth across a sector reclassification or an
+        # unsupported change from revenue to TOI/operating revenue.
+        comparable = consecutive and r["top_line_field"] == prev.get("top_line_field")
+        r["revenue_growth"] = safe_div(r["revenue"] - prev["revenue"], abs(prev["revenue"])) if comparable and r["revenue"] is not None and prev["revenue"] is not None else None
         r["profit_growth"] = safe_div(r["net_income"] - prev["net_income"], abs(prev["net_income"])) if consecutive and r["net_income"] is not None and prev["net_income"] is not None else None
         r["net_margin"] = safe_div(r["net_income"], r["revenue"]) if sector != "bank" else None
         r["current_ratio"] = safe_div(r["current_assets"], r["current_liabilities"]) if sector != "bank" else None
@@ -204,10 +239,14 @@ def analyze(store: Store, ticker: str):
     sector = SECTORS.get(sector_key, SECTORS["other"])
     prices = store.read("prices.parquet")
     p = prices.loc[prices.symbol == ticker].sort_values("date") if not prices.empty else pd.DataFrame()
-    facts = store.read("financials.parquet")
-    financials = financial_rows(facts, ticker, sector_key)
+    from .annual_baseline import facts_for_analysis, display_first_year
+    facts = facts_for_analysis(store)
+    # Opening-year facts affect the 2022 ratios but are never shown as another
+    # reporting year in the UI, PDF or user-facing annual-year summaries.
+    financials = [r for r in financial_rows(facts, ticker, sector_key)
+                  if int(r["period"]) >= display_first_year()]
     from .insights import quarterly_rows, explain_macro, explain_peers, conclusion, latest_macro
-    quarterly = quarterly_rows(store.read("financial_quarterly.parquet"), ticker)
+    quarterly = quarterly_rows(store.read("financial_quarterly.parquet"), ticker, sector_key)
     if p.empty and not financials and not quarterly:
         raise ValueError(f"Chưa có dữ liệu cho {ticker}. Hãy nạp giá hoặc BCTC trước.")
     last_price = float(p.iloc[-1].close) if not p.empty else None
@@ -263,7 +302,7 @@ def analyze(store: Store, ticker: str):
         (positives if market["return_20"] > 0 else concerns).append(f"Giá thay đổi {fmt(market['return_20'], 'percent')} trong 20 phiên; chưa cộng cổ tức tiền mặt.")
     if market["relative_20"] is not None:
         (positives if market["relative_20"] > 0 else concerns).append(f"Chênh lệch hiệu suất so với VN-Index: {fmt(market['relative_20'] * 100)} điểm phần trăm trong 20 phiên chung.")
-    critical_financial = [field for field in ("assets", "equity", "net_income", "revenue") if latest and latest.get(field) is None]
+    critical_financial = required_missing(latest, sector_key) if latest else []
     latest_year_issues = bool(latest.get("quality_issues")) if latest else False
     coverage = [
         {"group": "Giá và giao dịch", "status": "Có" if len(p) else "Thiếu", "detail": f"{len(p)} phiên; cuối kỳ {price_date or 'chưa có'}"},
@@ -272,7 +311,19 @@ def analyze(store: Store, ticker: str):
         {"group": "Vĩ mô", "status": "Có" if macro else "Thiếu", "detail": f"{len(macro)} chỉ tiêu; xem kỳ tham chiếu và ngày công bố"},
         {"group": "So sánh ngành", "status": ("Có" if peer_summary["peers_with_financials"] >= 3 else "Một phần" if peer_summary["peer_count"] else "Thiếu"), "detail": f"{peer_summary['peer_count']} mã ứng viên; {peer_summary['peers_with_financials']} mã có BCTC cùng năm (chưa đồng nghĩa đủ chỉ tiêu/đối soát)"},
     ]
-    coverage.append({"group":"BCTC quý", "status":"Có" if quarterly else "Thiếu", "detail": f"{len(quarterly)} kỳ; gần nhất {quarterly[-1]['period'] if quarterly else 'chưa có'}; chưa xác minh riêng quý/lũy kế"})
+    latest_quarter = quarterly[-1] if quarterly else None
+    quarter_gaps = (latest_quarter.get("missing_statements", []) + latest_quarter.get("missing_fields", [])) if latest_quarter else []
+    quarter_detail = f"{len(quarterly)} kỳ; gần nhất {latest_quarter['period'] if latest_quarter else 'chưa có'}"
+    if quarter_gaps:
+        labels = {"balance_sheet": "Cân đối kế toán", "income_statement": "KQKD",
+                  "cash_flow": "Lưu chuyển tiền tệ", "cfo": "Dòng tiền kinh doanh",
+                  "revenue": "Doanh thu thuần", "operating_income": "Tổng thu nhập hoạt động",
+                  "net_income": "LNST", "assets": "Tổng tài sản", "equity": "Vốn chủ sở hữu",
+                  "securities_revenue_or_revenue": "Doanh thu hoạt động chứng khoán",
+                  "top_line_unclassified": "Doanh thu/thu nhập chính (chưa phân ngành)"}
+        quarter_detail += "; thiếu " + ", ".join(dict.fromkeys(labels.get(k, k) for k in quarter_gaps))
+    coverage.append({"group": "BCTC quý", "status": "Một phần" if quarter_gaps else "Có" if quarterly else "Thiếu",
+                     "detail": quarter_detail + "; chưa xác minh riêng quý/lũy kế"})
     concerns += sector["risks"]
     if latest and price_date and int(latest["period"]) < int(price_date[:4]) and not quarterly:
         concerns.append(f"BCTC mới nhất trong bộ dữ liệu là năm {latest['period']}; chưa có BCTC quý hiện tại.")

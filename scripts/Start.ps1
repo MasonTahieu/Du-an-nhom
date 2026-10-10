@@ -8,6 +8,9 @@ $taskPython = Join-Path $taskVenv 'Scripts\python.exe'
 # Without UTF-8, Windows may encode redirected stdout/stderr as cp1252 (charmap).
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8:backslashreplace'
+$env:VNSTOCK_DISABLE_AGENT_SETUP = '1'
+$env:VNSTOCK_DISABLE_GLOBAL_AGENT = '1'
+$env:VNSTOCK_AGENT_TARGETS = 'none'
 if (-not (Test-Path -LiteralPath $taskPython)) { throw 'Chay Cai-Dat.cmd truoc.' }
 $taskLogs = Join-Path $taskRoot 'logs'
 New-Item -ItemType Directory -Path $taskLogs -Force | Out-Null

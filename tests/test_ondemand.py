@@ -32,6 +32,9 @@ def test_upcom_annual_unavailable_does_not_block_prices(tmp_path, monkeypatch):
     s.write_json("universe.json",{"symbols":[{"symbol":"ABC","exchange":"UPCOM"}]}, {})
     monkeypatch.setattr(ondemand.collectors,"init_profiles",lambda store: None)
     monkeypatch.setattr(ondemand.collectors,"fetch_annual_reference",lambda *a,**k: pytest.fail("Must not fetch UPCoM annual"))
+    from vnresearch import upcom_annual
+    monkeypatch.setattr(upcom_annual,"fetch_annual_vci",lambda *a,**k:
+        {"status":"partial","failed":[{"symbol":"ABC","error":"source unavailable"}]})
     calls=[]
     def price(store, tickers, **kwargs):
         calls.extend(tickers)

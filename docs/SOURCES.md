@@ -41,4 +41,4 @@ commit cố định trong `config/watchlist.json`. Cache tại `data/reference/t
 là bản sao nguồn GitHub đã ghim commit, không phải sản phẩm kiểm toán hoặc dữ liệu
 mới nhất. Mã/năm BCTC đã có trong local không bị thay thế trong quá trình nạp tự động.
 Không sao chép token Hugging Face từ upstream. Ghi nhận license và phạm vi nguồn ở
-`THIRD_PARTY_NOTICES.md`.
+`licenses/vn-annual-report-miner-MIT.txt` và `assets/fonts/LICENSE_DEJAVU`.

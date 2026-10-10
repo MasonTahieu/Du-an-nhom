@@ -10,7 +10,7 @@ Mở ứng dụng bằng Mo-Ung-Dung.cmd. Xem bộ thực tế cố định khô
 
 BCTC năm tái sử dụng 3 file Parquet chung mỗi sàn theo commit; cache dùng chung tại `data/reference/tumiqa/<commit>/` và không tải lại trên các lượt nạp tiếp theo. Giá lần đầu lấy từ history_start trong config/watchlist.json; lần sau cập nhật phần gần nhất theo checkpoint. Không phải realtime. Có thể bấm cập nhật sau phiên mỗi ngày; chưa có lịch tự chạy.
 
-BCTC năm hỗ trợ HSX/HNX; UPCoM có thể lấy giá nhưng nguồn năm chưa hỗ trợ. Mã chưa rõ ngành được ghi nhóm khác, không suy đoán ngành. Một lượt hoàn tất không bảo đảm đủ quý, tin, so sánh, định giá hoặc đã đối soát.
+BCTC năm HSX/HNX ưu tiên Tumiqa, dùng VCI bổ sung khi cần; UPCoM thử nguồn VCI nếu có dữ liệu. Mã chưa rõ ngành được ghi nhóm khác, không suy đoán ngành. Một lượt hoàn tất không bảo đảm đủ quý, tin, so sánh, định giá hoặc đã đối soát.
 
 Giữ ứng dụng chạy trong lúc nạp. Khởi động lại không tự tiếp tục tác vụ; bấm nạp lại để dùng phần đã lưu. Chỉ một lượt nạp qua giao diện/CMD cùng lúc. Không cần quét toàn thị trường; các CMD quét toàn thị trường vẫn là tùy chọn.
 
@@ -32,7 +32,7 @@ chương trình tải theo `reference_commit` đã ghim. Nạp HPG sau đó khô
 ba file HSX. Nếu đã từng tải file ở `data/local/raw/reference/...`, chương trình
 tái sử dụng nó mà không cần Internet.
 
-Có thể chạy `08-Chuan-Bi-Kho-BCTC-Tumiqa.cmd` để tải sẵn cả HSX/HNX trước khi dùng.
+Cache HSX/HNX được tự tải khi cần. Quy trình sử dụng web/CMD được tập trung trong [README](../README.md).
 **Không cần** chạy bộ quét BCTC năm toàn thị trường. Khi nạp, những mã/năm BCTC
 đã có trong `local` được giữ, trừ chuỗi nguồn tự động bị phát hiện thiếu hoặc đáng ngờ và có nguồn VCI thay thế hợp lệ; muốn thay bằng số đã đối soát thì dùng
 chức năng nhập CSV. Nạp giá và BCTC quý vẫn là các tác vụ riêng nếu người dùng yêu cầu.

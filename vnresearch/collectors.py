@@ -77,12 +77,52 @@ def fetch_annual_reference(store, tickers, commit, exchange="HSX", first_year=20
                      "as_of": str(updated.period.max()), "units": "VND; VND/share",
                      "note": "Nguồn thứ cấp, chưa đối soát PDF; không ghi đè mã/năm đã lưu. "
                              "Bản gốc dùng chung trong data/reference/tumiqa theo commit."})
+    # Cache is already available: add the preceding year as calculation-only
+    # context without touching the primary financials.parquet history.
+    # This never makes a separate network request or fails the annual import.
+    baseline = {"status": "not_checked"}
+    try:
+        from .annual_baseline import backfill_from_cache
+        baseline = backfill_from_cache(
+            store, year=int(first_year) - 1, symbols=wanted,
+            paths={(exchange, kind): path for kind, path in paths.items()})
+    except (OSError, ValueError, ImportError, KeyError) as exc:
+        baseline = {"status": "warning", "message": f"Không bổ sung năm nền: {exc}"}
     return {"rows": len(missing), "available_rows": len(incoming),
             "added_years": [{"symbol": t, "year": y} for t, y in added_years],
             "skipped_years": [{"symbol": t, "year": y} for t, y in skipped_years],
             "years": sorted(incoming.period.unique().tolist()), "symbols": wanted,
             "commit": commit, "downloaded_statements": downloaded,
-            "source": "shared_tumiqa_cache", "status": "complete"}
+            "source": "shared_tumiqa_cache", "baseline": baseline, "status": "complete"}
+
+
+def fetch_annual_for_symbol(store, ticker, settings, *, step, progress=print):
+    """Shared web/CMD source routing; step records optional and primary outcomes."""
+    ticker = symbol(ticker)
+    catalogue = {r["symbol"]: r.get("exchange")
+                 for r in store.read_json("universe.json", {}).get("symbols", [])}
+    exchange = catalogue.get(ticker)
+    if exchange == "UPCOM":
+        from .upcom_annual import fetch_annual_vci
+        return step("BCTC năm " + ticker + " · VCI (UPCoM, nếu có)",
+                    lambda: fetch_annual_vci(store, ticker, first_year=settings["first_year"]))
+    exchanges = {"HOSE": ["HSX"], "HSX": ["HSX"], "HNX": ["HNX"]}.get(
+        exchange, ["HSX", "HNX"])
+    def reference():
+        errors = []
+        for ex in exchanges:
+            try:
+                return fetch_annual_reference(store, [ticker], settings["reference_commit"],
+                                              ex, settings["first_year"])
+            except ValueError as exc:
+                errors.append(str(exc))
+        raise ValueError("; ".join(errors))
+    # Failure of the first source remains a warning when VCI can fill the data.
+    step("BCTC năm " + ticker + " · dùng cache nếu có", reference, scope="optional")
+    from .financials import repair_annual_sources
+    return step("Đối soát / bổ sung BCTC năm " + ticker + " qua VCI khi cần",
+                lambda: repair_annual_sources(store, [ticker],
+                    first_year=settings["first_year"], progress=progress))
 
 # Shared mapping is versioned and can be replayed from saved provider data.
 from .financials import clean_label, RULES, normalize_statement
@@ -103,6 +143,7 @@ def fetch_quarters(store, tickers, *, delay=7.0, progress=print, fetch=None):
     from .financials import (STATEMENTS, PROVIDERS, provider_statement,
                              repair_quarter_cache, normalize_statement)
     from .insights import quarterly_rows
+    from .peers import map_sector
     repair_quarter_cache(store)
     providers = ["KBS"] if fetch is not None else ["VCI"]
     result = {"started_at": utc(), "results": [], "failed": []}
@@ -149,12 +190,16 @@ def fetch_quarters(store, tickers, *, delay=7.0, progress=print, fetch=None):
                             old = old.loc[~((old.symbol == ticker) & old_keys.isin(keys))]
                         store.write("financial_quarterly.parquet", pd.concat([old, incoming], ignore_index=True),
                             {"source": "Quarterly statements; see source_url per row", "source_url": PROVIDERS[provider],
-                             "normalization_version": 2, "as_of": incoming.period.max(), "units": "VND",
+                             "normalization_version": 3, "as_of": incoming.period.max(), "units": "VND",
                              "note": "BS tại thời điểm; KQKD/CFO chưa xác minh riêng quý hay lũy kế. Không tính TTM hoặc ROE quý."})
-                    coverage = quarterly_rows(incoming, ticker)
+                    profiles = store.read_json("companies.json", {})
+                    industry = store.read_json("industry_catalog.json", {}).get("symbols", {})
+                    sector = map_sector(ticker, profiles.get(ticker, {}), industry.get(ticker, {}))
+                    coverage = quarterly_rows(incoming, ticker, sector)
                     result["results"].append({"symbol": ticker, "provider": provider, "rows": len(incoming),
                         "periods": sorted(incoming.period.unique().tolist()), "diagnostics": diagnostics,
                         "missing_by_period": {r["period"]: r["missing_fields"] for r in coverage if r["missing_fields"]},
+                        "missing_statements_by_period": {r["period"]: r["missing_statements"] for r in coverage if r["missing_statements"]},
                         "fallback_errors": errors})
                     success = True
                     break
@@ -168,7 +213,13 @@ def fetch_quarters(store, tickers, *, delay=7.0, progress=print, fetch=None):
             if not success:
                 result["failed"].append({"symbol": ticker, "error": "; ".join(errors)})
             if limited: break
-    result["status"] = "partial" if result["failed"] or any(r.get("missing_by_period") for r in result["results"]) else "complete"
+    # Network/download execution and semantic data completeness are independent.
+    result["execution_status"] = "partial" if result["failed"] else "complete"
+    result["quality_status"] = "partial" if any(
+        r.get("missing_by_period") or r.get("missing_statements_by_period")
+        for r in result["results"]) else "complete"
+    result["status"] = "partial" if (result["execution_status"] == "partial" or
+                                    result["quality_status"] == "partial") else "complete"
     result["finished_at"] = utc()
     atomic_json(store.path / "financial-run.json", result)
     return result
