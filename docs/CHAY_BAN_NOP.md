@@ -16,7 +16,7 @@ Dữ liệu đang cập nhật vẫn ở data/local, không đưa vào Git.
 Sau khi cài thư viện, xem phân tích và xuất PDF chạy offline. Không chạy các CMD nạp 00–05 cho bản nộp.
 Các lần mở sau chỉ cần Mo-Ung-Dung.cmd. Nếu trình duyệt còn giao diện cũ, nhấn Ctrl+F5.
 
-Để tái tạo PDF từ đúng bộ cố định `submission`, dùng các lệnh bảo trì trong [README](../README.md#8-bảo-trì-và-tái-tạo-bản-cố-định). Kết quả được ghi tại output/pdf/VCB_Bao_cao_2026-10-09.pdf; không dùng dữ liệu local để mặc nhiên coi là bản cố định.
+Để tái tạo PDF từ đúng bộ cố định `submission`, dùng [các lệnh tái tạo bản cố định](MANUAL_RUN.md#5-tái-tạo-bản-cố-định). Kết quả được ghi tại output/pdf/VCB_Bao_cao_2026-10-09.pdf; không dùng dữ liệu local để mặc nhiên coi là bản cố định.
 
 ## Tính tái lập và giới hạn
 

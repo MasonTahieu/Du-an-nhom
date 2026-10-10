@@ -1,16 +1,18 @@
-# Nguồn cụ thể
+# Nguồn dữ liệu và phạm vi
 
 | Nhóm | Nguồn | Lấy / lưu | Giới hạn |
 | --- | --- | --- | --- |
-| OHLCV | KBS qua vnstock 4.0.8 | Lịch sử từng mã theo yêu cầu; chuẩn hóa VND; Parquet | EOD, nguồn có thể sửa giá điều chỉnh |
-| BCTC demo | Parquet vn-annual-report-miner commit f8cad8d... | Lọc 9 mã từ 2022, giữ mã/nguồn; Parquet | Đến 2025, chưa đối soát PDF/phạm vi |
-| BCTC thực dùng | Công bố doanh nghiệp / sàn | Đối soát và chuẩn hóa CSV | Hỗ trợ năm; chưa có quý/TTM |
-| Vĩ mô | NSO báo cáo 9 tháng 2026 | Số đã đọc, giữ kỳ/đơn vị/ngày/URL; JSON | Công bố 03/10/2026 |
-| Lãi suất | SBV | Người dùng nhập khi có nguồn | Demo chưa có |
-| USD/VND | VCB XML (gợi ý) | Nhập bảng có ngày/loại mua-bán | Demo chưa có |
-| Tin mẫu | IR VCB/FPT/Hòa Phát | Tóm tắt độc lập, ngày/URL; JSON | 1 tin/mã |
-| Tin thêm | KBS hoặc JSON nhập tay | Metadata giới hạn 10 tin/mã/lần; nội dung có kiểm tra | Nguồn có thể ít/thiếu |
-| Hồ sơ/peers | Cấu hình + trang doanh nghiệp | JSON | Nhóm minh họa, không đại diện ngành |
+| Danh mục / OHLCV | KBS qua vnstock 4.0.9 | Danh mục ba sàn, lịch sử và cập nhật giá theo yêu cầu; cổ phiếu chuẩn hóa VND, VNINDEX giữ điểm; Parquet/JSON | Giá ngày, nguồn có thể sửa giá điều chỉnh |
+| BCTC năm | Parquet Tumiqa theo `reference_commit`; VCI bổ sung | Cache chung HOSE/HNX; VCI khi thiếu/nguồn tự động đáng ngờ; UPCoM thử VCI | Có thể thiếu mã, kỳ hoặc chỉ tiêu; không tự điền số thiếu |
+| BCTC quý | VCI qua vnstock | Lấy khi yêu cầu nạp quý, chuẩn hóa ba bảng và giữ kỳ/nguồn | Chưa mặc nhiên xác minh quý riêng/lũy kế hoặc suy TTM |
+| BCTC nhập tay | Công bố doanh nghiệp / sàn do người dùng đối soát | Nhập CSV năm, giữ dấu `manual_csv` | Không tự thay bằng dữ liệu nạp tự động |
+| Vĩ mô | NSO theo URL trong `config/sources.json` | Giữ kỳ/đơn vị/ngày/URL; JSON | Hiện cấu hình báo cáo 9 tháng 2026, không tự tìm kỳ mới |
+| Lãi suất | SBV hoặc nguồn người dùng cung cấp | Nhập dữ liệu có kỳ, đơn vị và URL | Không có bộ tự tìm công bố lãi suất mới |
+| USD/VND | XML Vietcombank | Lệnh `05` lấy bảng có ngày và loại mua/bán | Phụ thuộc bảng nguồn tại thời điểm lấy |
+| Tin tức | CafeF RSS, KBS, URL IR cấu hình hoặc JSON nhập tay | RSS giữ metadata/URL; lệnh `05` lấy thêm tin cho nhóm mã và nội dung từ URL | Phân loại mã/ngành và nội dung tự động chưa mặc nhiên được đối soát |
+| Hồ sơ/peers | Cấu hình, danh mục ngành và hồ sơ đã lưu | JSON, gợi ý các mã cùng ngành khi nguồn hỗ trợ | Mã chưa rõ ngành giữ trạng thái chưa xác minh |
+
+Bộ `data/sample/` dùng để kiểm tra cài đặt; bộ `data/submission/` là dữ liệu thực tế cố định. Cả hai không thay cho kho dữ liệu mới do từng máy chủ động nạp. Các bước sử dụng nằm trong [README](../README.md).
 
 ## Liên kết
 
@@ -39,6 +41,6 @@ Quan hệ vĩ mô→doanh nghiệp là diễn giải định tính. SHA-256 ch�
 Mã nguồn tích hợp `vnresearch/reference_cache.py` để đọc các file Parquet theo
 commit cố định trong `config/watchlist.json`. Cache tại `data/reference/tumiqa/`
 là bản sao nguồn GitHub đã ghim commit, không phải sản phẩm kiểm toán hoặc dữ liệu
-mới nhất. Mã/năm BCTC đã có trong local không bị thay thế trong quá trình nạp tự động.
+mới nhất. CSV đã nhập thủ công được giữ. Chuỗi năm từ nguồn tự động bị phát hiện thiếu hoặc đáng ngờ chỉ được thay khi có nguồn VCI thay thế hợp lệ, có sao lưu bản cũ.
 Không sao chép token Hugging Face từ upstream. Ghi nhận license và phạm vi nguồn ở
 `licenses/vn-annual-report-miner-MIT.txt` và `assets/fonts/LICENSE_DEJAVU`.

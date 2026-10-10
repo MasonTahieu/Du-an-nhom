@@ -1,6 +1,6 @@
 # Sửa BCTC thiếu chỉ tiêu và nạp dữ liệu trên máy mới
 
-Bản sửa ngày 09/10/2026 được kiểm tra với Python 3.11, `vnstock==4.0.8`, `vnai==2.6.1`. Các phiên bản SDK này được ghim trong `requirements-market.txt`; bộ thư viện ứng dụng được ghim trong `requirements.lock.txt`.
+Bản sửa BCTC ngày 09/10/2026 được kiểm tra với Python 3.11, `vnstock==4.0.8`, `vnai==2.6.1`. Bộ cài hiện tại dùng `vnstock==4.0.9`, `vnai==2.6.2`, ghim trong `requirements-market.lock.txt`; bộ thư viện ứng dụng được ghim trong `requirements.lock.txt`. Quy trình sử dụng nằm trong [README](../README.md).
 
 ## Nguyên nhân và hành vi sau sửa
 
