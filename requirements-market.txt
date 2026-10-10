@@ -1,8 +1,3 @@
-# Optional, installed only for manual online collection.
--r requirements.txt
-vnstock==4.0.8
-vnai==2.6.1
-requests>=2.32,<3
-beautifulsoup4>=4.12,<5
-trafilatura>=2,<3
-pypdf>=6,<7
+# Online collection, included in the default installer.
+# Keep both the app and collector dependencies reproducible on another machine.
+-r requirements-market.lock.txt

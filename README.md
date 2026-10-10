@@ -33,7 +33,11 @@ Cả hai cách đều tải source của cùng dự án. Tải ZIP phù hợp kh
 3. Trong thư mục dự án, nhấp đúp **`Cai-Dat.cmd`**. Cần Internet để cài thư viện.
 4. Đợi thông báo **San sang. Chay Mo-Ung-Dung.cmd de mo giao dien.** Nếu có lỗi, xử lý theo thông báo rồi chạy lại bộ cài; chưa chuyển sang bước mở ứng dụng.
 
-Bộ cài tạo/tái sử dụng `%USERPROFILE%\.venv`, cài thư viện ứng dụng từ `requirements.lock.txt` và bộ nạp từ `requirements-market.txt`, rồi kiểm tra dữ liệu mẫu đóng gói. Chỉ có **một bộ cài đầy đủ**, không cần cài riêng bộ quét thị trường. Thông thường chỉ cài một lần; chạy lại khi source hoặc yêu cầu thư viện thay đổi.
+Bộ cài tạo/tái sử dụng `.venv` ngay trong thư mục dự án. Các CMD và script mở web đều dùng Python của môi trường này. Bộ cài cài thư viện ứng dụng từ `requirements.lock.txt`, kiểm tra dữ liệu mẫu đóng gói, rồi cài bộ nạp từ `requirements-market.txt` (dùng bản khóa `requirements-market.lock.txt`). `vnstock`/`vnai` lấy từ kho chính thức của Vnstock; các thư viện còn lại lấy từ PyPI. Cả thư viện nền và thư viện bộ nạp được giữ theo các file khóa để máy khác cài cùng phiên bản. Chỉ có **một bộ cài đầy đủ**, không cần cài riêng bộ quét thị trường. Thông thường chỉ cài một lần; chạy lại khi source hoặc yêu cầu thư viện thay đổi.
+
+Nếu chỉ cần xem dữ liệu đã có, có thể chạy `.\Cai-Dat.cmd -Offline`. Tùy chọn này bỏ qua bộ nạp online; vẫn cần Internet để tải thư viện ứng dụng khi cài lần đầu. Muốn nạp dữ liệu mới, chạy lại `.\Cai-Dat.cmd` không kèm `-Offline`. Nếu bộ nạp cài lỗi, bộ cài báo rõ phần ứng dụng đã sẵn sàng nhưng cài đặt đầy đủ chưa hoàn tất, không báo thành công toàn bộ.
+
+Máy đã dùng phiên bản cũ: chạy lại `Cai-Dat.cmd` để tạo môi trường riêng trong dự án; môi trường cũ ở thư mục người dùng được giữ nguyên. Khi chuyển dự án sang thư mục/máy khác, tải đủ source rồi chạy bộ cài tại nơi mới; không sao chép `.venv` cũ. macOS/Linux dùng `sh scripts/setup.sh` (hoặc thêm `--offline` nếu chỉ cần phần ứng dụng).
 
 Không cần tự cài database server, Node.js hay dịch vụ AI. Không đưa `.env`, API key hoặc token vào GitHub. Nếu SDK yêu cầu đăng ký trên máy mới, thực hiện theo thông báo của SDK; hệ thống không bỏ qua hạn mức nguồn.
 
@@ -241,7 +245,7 @@ Dữ liệu local được ưu tiên khi hợp nhất bộ đóng gói; không g
 
 Máy khác tải đủ source, `config/`, `assets/fonts/`, `data/sample/`, `data/submission/` và các `requirements*.txt`, chạy `Cai-Dat.cmd`, **sau đó tự nạp dữ liệu bằng web hoặc CMD**. Không phụ thuộc thư mục cache hay đường dẫn riêng của máy tác giả. `data/local/` và `data/reference/` bị Git bỏ qua, được tạo khi cần. Tải lại source không tự lấy về dữ liệu mà bạn hoặc thành viên khác đã quét.
 
-`vnstock==4.0.8`, `vnai==2.6.1` được ghim; kho Tumiqa dùng `reference_commit` trong cấu hình. Cùng source/cấu hình và cùng bản dữ liệu cho cùng quy tắc tính toán. API trực tuyến có thể thay đổi dữ liệu theo ngày tải: muốn tái lập chính xác một báo cáo, giữ dữ liệu gốc, manifest, cấu hình và JSON phân tích cùng phiên bản source. SHA-256 xác nhận file không đổi, không xác nhận nguồn đã đúng.
+`vnstock==4.0.9`, `vnai==2.6.2` được ghim; kho Tumiqa dùng `reference_commit` trong cấu hình. Cùng source/cấu hình và cùng bản dữ liệu cho cùng quy tắc tính toán. API trực tuyến có thể thay đổi dữ liệu theo ngày tải: muốn tái lập chính xác một báo cáo, giữ dữ liệu gốc, manifest, cấu hình và JSON phân tích cùng phiên bản source. SHA-256 xác nhận file không đổi, không xác nhận nguồn đã đúng.
 
 ## 6. Nguồn, chỉ tiêu và giới hạn
 

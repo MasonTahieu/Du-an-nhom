@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $taskRoot
-$taskVenv = Join-Path $HOME '.venv'
+$taskVenv = Join-Path $taskRoot '.venv'
 $taskPython = Join-Path $taskVenv 'Scripts\python.exe'
 # Child Python process writes Vietnamese messages to redirected log files.
 # PowerShell Start-Process does not inherit the environment set by _python.cmd.
