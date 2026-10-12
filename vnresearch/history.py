@@ -54,21 +54,24 @@ def plan(store, tickers, start=None, end=None, days=180, *, refresh=False):
     tasks, reused = [], []
     for ticker in dict.fromkeys(symbol(t) for t in tickers):
         previous = by_symbol.get(ticker,pd.DataFrame())
+        present = set(previous.date) if not previous.empty else set()
         begin = start or (
             (pd.Timestamp(previous.date.max())-pd.Timedelta(days=10)).date().isoformat()
             if not previous.empty else (date.fromisoformat(cutoff)-timedelta(days=365)).isoformat())
-        if not refresh and not start and checkpoint.get("checked", {}).get(ticker) == cutoff and not previous.empty:
+        if not refresh and not start and checkpoint.get("checked", {}).get(ticker) == cutoff and cutoff in present:
             reused.append(ticker)
             continue
         for a,b in ranges(begin, cutoff, days):
             key = f"{ticker}/{a}/{b}"
             done = checkpoint.get("chunks", {}).get(key, {})
-            present = set(previous.date) if not previous.empty else set()
             dates = done.get("dates", [])
             okay = dates and set(dates) <= present and (store.path / done.get("raw_file","missing")).is_file()
+            # The last chunk must remain retryable when the source has not returned that session.
+            okay = okay and (b != cutoff or cutoff in dates)
             tasks.append({"key": key, "symbol": ticker, "start": a, "end": b,
                           "status": "reused" if okay and not refresh else "pending"})
-    return {"cutoff": cutoff, "tasks": tasks, "reused_symbols": reused,
+    return {"cutoff": cutoff, "symbols": list(dict.fromkeys(symbol(t) for t in tickers)),
+            "tasks": tasks, "reused_symbols": reused,
             "network_calls": sum(t["status"] == "pending" for t in tasks)}
 
 def prepare_history(store, tickers, start=None, end=None, *, days=180, refresh=False,
@@ -144,8 +147,11 @@ def prepare_history(store, tickers, start=None, end=None, *, days=180, refresh=F
             for ticker in report["symbols"]:
                 tasks = [t for t in work["tasks"] if t["symbol"] == ticker]
                 all_done = all(state["chunks"].get(t["key"],{}).get("status") == "complete" for t in tasks)
-                if all_done and ticker not in ticker_failed and not old.empty and (old.symbol == ticker).any():
+                latest_present = not old.empty and ((old.symbol == ticker) & (old.date == work["cutoff"])).any()
+                if all_done and ticker not in ticker_failed and latest_present:
                     state["checked"][ticker] = work["cutoff"]
+                elif not latest_present and state["checked"].get(ticker) == work["cutoff"]:
+                    state["checked"].pop(ticker)
             if report["status"] != "rate_limited":
                 report["status"] = "partial" if report["failed"] else "complete"
         except KeyboardInterrupt:
@@ -155,11 +161,12 @@ def prepare_history(store, tickers, start=None, end=None, *, days=180, refresh=F
             report["finished_at"] = stamp()
             old = store.read("prices.parquet")
             atomic_json(store.path / "history-progress.json", state)
-            if not old.empty:
-                report["coverage"] = [
-                    {"symbol": t, "rows": len(g), "first": str(g.date.min()), "last": str(g.date.max()),
-                     "checked_through": state["checked"].get(t),
-                     "latest_session_present": str(g.date.max()) == work["cutoff"]}
-                    for t,g in old.loc[old.symbol.isin(report["symbols"])].groupby("symbol")]
+            report["coverage"] = [
+                {"symbol": t, "rows": len(g), "first": str(g.date.min()), "last": str(g.date.max()),
+                 "checked_through": state["checked"].get(t),
+                 "latest_session_present": work["cutoff"] in set(g.date)}
+                for t,g in old.loc[old.symbol.isin(report["symbols"])].groupby("symbol")] if not old.empty else []
+            present = {row["symbol"] for row in report["coverage"] if row["latest_session_present"]}
+            report["pending_latest_symbols"] = [t for t in report["symbols"] if t not in present]
             atomic_json(store.path / "history-run.json", report)
         return report

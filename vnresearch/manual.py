@@ -8,7 +8,9 @@ from .locking import process_lock
 def config():
     return json.loads((ROOT/"config/watchlist.json").read_text(encoding="utf-8"))
 
-def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=False, dry_run=False, annual_only=False, all_market=False, exchanges=None, limit=None, include_rss=True):
+def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=False, dry_run=False, annual_only=False, all_market=False, stored=False, exchanges=None, limit=None, include_rss=True):
+    if stored and (kind != "history" or tickers or all_market or exchanges):
+        raise ValueError("--stored chỉ dùng cập nhật giá đã lưu; không kết hợp --symbols, --all-market hoặc --exchanges.")
     settings = config()
     store = Store("local")
     if kind=="universe":
@@ -19,7 +21,13 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
         from .quality import readiness
         return readiness(store)
     all_market = all_market and not tickers
-    if all_market:
+    if stored:
+        prices = store.read("prices.parquet")
+        benchmarks = {"VNINDEX", settings.get("benchmark", "VNINDEX")}
+        selected = sorted({symbol(t) for t in prices["symbol"].dropna()} - benchmarks) if not prices.empty else []
+        if not selected:
+            raise ValueError("Chưa có mã cổ phiếu nào có dữ liệu giá trên máy. Nạp ít nhất một mã trên web trước.")
+    elif all_market:
         from .universe import market_symbols
         selected=market_symbols(store,exchanges)
     else:
@@ -38,6 +46,8 @@ def _run(kind, tickers=None, *, initial=False, start=None, end=None, refresh=Fal
         begin = start or (settings["history_start"] if initial else None)
         if dry_run:
             return plan(store,selected,begin,end,refresh=refresh)
+        if stored:
+            print(f"Cập nhật giá {len(selected)} mã (gồm chỉ số đối chiếu): " + ", ".join(selected), flush=True)
         return prepare_history(store,selected,begin,end,refresh=refresh)
     if dry_run:
         return {"kind":kind,"symbols":selected,"note":"Chỉ xem kế hoạch; chưa gọi nguồn."}
@@ -136,6 +146,7 @@ def main():
     p.add_argument("kind",choices=["universe","history","financials","context","check"])
     p.add_argument("--symbols",nargs="+")
     p.add_argument("--all-market",action="store_true",help="Dùng danh mục thị trường đã lưu; --symbols ghi đè")
+    p.add_argument("--stored",action="store_true",help="Cập nhật giá các mã đã có lịch sử giá local và chỉ số đối chiếu")
     p.add_argument("--exchanges",nargs="+",choices=["HOSE","HNX","UPCOM"])
     p.add_argument("--limit",type=int,help="Giới hạn số mã để kiểm thử")
     p.add_argument("--initial",action="store_true",help="Lấy từ history_start trong config")
@@ -148,8 +159,16 @@ def main():
     try:
         result=run(a.kind,a.symbols,initial=a.initial,start=a.start,end=a.end,
                    refresh=a.refresh,dry_run=a.dry_run,annual_only=a.annual_only,
-                   all_market=a.all_market,exchanges=a.exchanges,limit=a.limit)
+                   all_market=a.all_market,stored=a.stored,exchanges=a.exchanges,limit=a.limit)
         print(json.dumps(result,ensure_ascii=False,indent=2))
+        if a.kind == "history" and not a.dry_run:
+            missing = result.get("pending_latest_symbols", [])
+            print(f"Ngày giá yêu cầu: {result['cutoff']} (mốc 15:30 giờ Việt Nam).")
+            if missing:
+                latest = {row["symbol"]: row["last"] for row in result.get("coverage", [])}
+                print("Chưa có dữ liệu phiên yêu cầu: " + ", ".join(
+                    f"{ticker} (giá cuối: {latest.get(ticker, 'chưa có')})" for ticker in missing))
+                print("Nguồn có thể chưa cập nhật hoặc mã không có giao dịch. Dữ liệu đã lưu được giữ; chạy lại để kiểm tra.")
         if result.get("status") in {"partial","interrupted","rate_limited"} or result.get("failed"):
             p.exit(1,"Chưa hoàn tất. Dữ liệu đã lưu được giữ; xem lỗi rồi chạy lại.\n")
     except (ValueError,RuntimeError,FileNotFoundError) as exc:

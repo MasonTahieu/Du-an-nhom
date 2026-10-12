@@ -14,7 +14,8 @@ Vnstock 4.0.8: Market().equity("VCB").ohlcv(..., source="kbs", count=1000); ch�
 
 - Giá cổ phiếu KBS là nghìn VND: nhân 1.000 thành VND trước lưu.
 - VNINDEX giữ đơn vị điểm. Khối lượng là số cổ phiếu.
-- Chạy sau 16:00, tối đa một lần/ngày. Không có streaming/scheduler.
+- Từ 15:30 giờ Việt Nam mới cho phép lấy giá ngày hiện tại; trước đó chỉ lấy đến phiên trước. Không có streaming/scheduler.
+- `03-Cap-Nhat-Gia-Cac-Ma-Da-Luu.cmd` cập nhật các mã đã có lịch sử giá và VNINDEX. Nếu nguồn chưa trả phiên mới, xem ngày giá cuối và chạy lại sau; không suy diễn giá cho ngày nghỉ hoặc mã không có giao dịch.
 - Phiên hôm nay chưa hoàn tất bị loại. Ngày nghỉ/lễ dựa các dòng nguồn thực tế trả.
 - Có chồng lấn 10 ngày; loại trùng symbol/date. Sự kiện cổ phiếu có thể yêu cầu nạp lại toàn khoảng.
 - Không trộn khác cơ sở điều chỉnh. Nguồn lỗi/OHLC lỗi thì giữ dữ liệu cũ.

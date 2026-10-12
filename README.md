@@ -47,6 +47,8 @@ Phù hợp khi nghiên cứu một vài mã, không cần quét toàn thị trư
 
 Chỉ cần tin RSS thì bấm **Cập nhật tin CafeF theo ngành / mã**; thao tác này không tải lại giá/BCTC. Giữ ứng dụng chạy trong lúc nạp. Chọn doanh nghiệp hoặc mở trang phân tích chỉ đọc dữ liệu đã lưu.
 
+**Cập nhật giá các mã đã lưu:** có Internet rồi nhấp đúp **`03-Cap-Nhat-Gia-Cac-Ma-Da-Luu.cmd`**. File tự chọn các mã có lịch sử giá trong `data/local/` và cập nhật cùng VNINDEX; không cần nhập danh sách hoặc nạp danh mục toàn thị trường. Chỉ cập nhật giá, không nạp BCTC/tin tức. Từ **15:30 giờ Việt Nam**, hệ thống cho phép lấy dữ liệu ngày hiện tại; trước đó chỉ lấy đến phiên trước. Nếu nguồn chưa trả phiên mới, xem ngày giá cuối và chạy lại sau.
+
 ### Cách B — Quét toàn thị trường bằng CMD
 
 Cài xong thư viện rồi nhấp đúp các file trong bảng. Đợi một lượt kết thúc trước khi chạy lượt tiếp theo; không nạp đồng thời trên web và CMD.
@@ -55,7 +57,7 @@ Cài xong thư viện rồi nhấp đúp các file trong bảng. Đợi một l�
 |---|---|
 | `00-Nap-Danh-Muc-Thi-Truong.cmd` | Lấy/làm mới danh mục cổ phiếu HOSE, HNX, UPCoM |
 | `02-Nap-Lich-Su-Toan-Thi-Truong.cmd` | Dựng lịch sử giá toàn danh mục và VNINDEX; mặc định từ 01/01/2025 |
-| `03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd` | Cập nhật giá sau phiên, khi nguồn đã công bố dữ liệu; nên chạy sau 16:00 giờ Việt Nam |
+| `03-Cap-Nhat-Gia-Toan-Thi-Truong.cmd` | Cập nhật giá toàn danh mục; từ 15:30 giờ Việt Nam cho phép lấy dữ liệu ngày hiện tại khi nguồn đã công bố |
 | `04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd` | Nạp/bổ sung BCTC năm toàn danh mục; mặc định từ 2022 |
 | `05-Nap-Vi-Mo-Tin-Tuc.cmd` | Lấy vĩ mô, tỷ giá, RSS và tin cho nhóm mã cấu hình; mặc định VCB, FPT, HPG |
 | `06-Kiem-Tra-Du-Lieu.cmd` | Kiểm tra dữ liệu đã lưu, không nạp hoặc sửa dữ liệu |

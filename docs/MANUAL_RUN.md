@@ -10,6 +10,7 @@ Mở PowerShell trong thư mục dự án, chạy tên file với tiền tố `.
 # Xem trước kế hoạch, không gọi nguồn hoặc ghi dữ liệu.
 .\02-Nap-Lich-Su-Toan-Thi-Truong.cmd --limit 3 --dry-run
 .\04-Nap-BCTC-Nam-Toan-Thi-Truong.cmd --limit 3 --dry-run
+.\03-Cap-Nhat-Gia-Cac-Ma-Da-Luu.cmd --dry-run
 
 # Lọc sàn hoặc chọn nhóm mã.
 .\02-Nap-Lich-Su-Toan-Thi-Truong.cmd --exchanges HOSE
@@ -22,6 +23,10 @@ Mở PowerShell trong thư mục dự án, chạy tên file với tiền tố `.
 ```
 
 Lệnh dùng toàn danh mục cần chạy `00-Nap-Danh-Muc-Thi-Truong.cmd` trước. Tham số `--refresh` yêu cầu tải lại khoảng/nguồn thay vì chỉ dùng checkpoint; kiểm tra cơ sở điều chỉnh giá trước khi chủ động tải lại lịch sử.
+
+`03-Cap-Nhat-Gia-Cac-Ma-Da-Luu.cmd` tự chọn các mã có lịch sử trong `data/local/prices.parquet`, thêm VNINDEX và chỉ cập nhật giá. Không cần `00`; mã chỉ có hồ sơ hoặc BCTC sẽ không được chọn. Chưa có dữ liệu giá cổ phiếu thì nạp một mã trên web trước. File dùng tùy chọn `--stored`, không kết hợp với `--symbols`, `--all-market` hoặc `--exchanges`. Trên macOS/Linux có thể chạy `python -m vnresearch.manual history --stored` trong môi trường dự án.
+
+Mốc lấy giá ngày hiện tại là **15:30 giờ Việt Nam**; trước mốc này chỉ lấy đến phiên trước, cuối tuần lùi về thứ Sáu. Đây là cập nhật chủ động khi mở CMD, không tự chạy theo giờ. Nguồn có thể trả thiếu phiên mới, hoặc mã không có giao dịch/ngày nghỉ lễ: kết quả hiển thị ngày giá cuối và danh sách `pending_latest_symbols`; chạy lại sẽ kiểm tra những mã còn thiếu, kể cả checkpoint từ bản cũ. Lượt quét `complete` nghĩa là các bước đã chạy xong; xem `coverage` để biết phiên yêu cầu đã có hay chưa.
 
 Các mặc định ở `config/watchlist.json`: `history_start=2025-01-01`, `first_year=2022`, nhóm tin `VCB, FPT, HPG`. Lệnh `03` cập nhật vùng gần giá cuối đã lưu, chồng lấn 10 ngày; chưa có lịch sử cho một mã thì dùng khoảng mặc định một năm. Muốn dựng từ ngày cấu hình, dùng `02`.
 

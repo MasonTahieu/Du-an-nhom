@@ -20,7 +20,7 @@ REPO_URL = "https://github.com/Tumiqa/vn-annual-report-miner"
 def completed_session():
     now = datetime.now(VN_TIME)
     day = now.date()
-    if now.hour < 16:
+    if (now.hour, now.minute) < (15, 30):
         day -= timedelta(days=1)
     while day.weekday() >= 5:
         day -= timedelta(days=1)

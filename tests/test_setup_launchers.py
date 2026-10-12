@@ -68,3 +68,32 @@ def test_setup_rejects_conflicting_modes_before_creating_environment(tmp_path):
     assert result.returncode != 0
     assert "Khong dung -Market va -Offline cung luc." in result.stderr
     assert not (project / ".venv").exists()
+
+
+def test_stored_price_launcher_from_another_directory_preserves_scope_and_exit_code(tmp_path):
+    project = tmp_path / "Dự án có khoảng trắng"
+    project.mkdir()
+    launcher = project / "03-Cap-Nhat-Gia-Cac-Ma-Da-Luu.cmd"
+    shutil.copy2(ROOT / launcher.name, launcher)
+    shutil.copy2(ROOT / "_python.cmd", project / "_python.cmd")
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(project / ".venv")],
+                   check=True, capture_output=True, timeout=30)
+    module = project / "vnresearch"
+    module.mkdir()
+    (module / "__init__.py").write_text("", encoding="utf-8")
+    (module / "manual.py").write_text(
+        "import json,os,sys\n"
+        "print('ARGS=' + json.dumps(dict(args=sys.argv[1:],cwd=os.getcwd())))\n"
+        "sys.exit(17 if '--fail' in sys.argv else 0)\n", encoding="utf-8")
+    def launch(arguments):
+        return subprocess.run(["cmd.exe", "/d", "/c", "call", str(launcher), *arguments],
+                              input="\n", cwd=tmp_path, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=30)
+    result = launch(["--dry-run", "--limit", "2"])
+    assert result.returncode == 0, result.stderr
+    output = json.loads(next(row[5:] for row in result.stdout.splitlines() if row.startswith("ARGS=")))
+    assert output["args"] == ["history", "--stored", "--dry-run", "--limit", "2"]
+    assert Path(output["cwd"]) == project
+    result = launch(["--fail"])
+    assert result.returncode == 17
+    assert "Chua hoan tat" in result.stdout

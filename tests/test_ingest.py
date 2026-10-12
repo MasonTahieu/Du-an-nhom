@@ -1,7 +1,28 @@
 import pandas as pd
 import pytest
+from datetime import datetime, timezone
 from vnresearch.storage import Store
 import vnresearch.ingest as ingest
+
+
+@pytest.mark.parametrize("utc_time,expected", [
+    ("2026-10-09T08:29:59", "2026-10-08"),
+    ("2026-10-09T08:30:00", "2026-10-09"),
+    ("2026-10-09T09:00:00", "2026-10-09"),
+    ("2026-10-10T08:29:00", "2026-10-09"),
+    ("2026-10-10T08:30:00", "2026-10-09"),
+    ("2026-10-11T08:30:00", "2026-10-09"),
+    ("2026-10-12T08:29:59", "2026-10-09"),
+    ("2026-10-12T08:30:00", "2026-10-12"),
+])
+def test_completed_session_uses_1530_vietnam_time_and_skips_weekends(monkeypatch, utc_time, expected):
+    instant = datetime.fromisoformat(utc_time).replace(tzinfo=timezone.utc)
+    class Clock:
+        @staticmethod
+        def now(tz):
+            return instant.astimezone(tz)
+    monkeypatch.setattr(ingest, "datetime", Clock)
+    assert ingest.completed_session() == expected
 
 
 class PriceDomain:
