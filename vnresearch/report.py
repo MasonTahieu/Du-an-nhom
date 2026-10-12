@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from datetime import date
 import threading
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, quoteattr
 
 import matplotlib
 matplotlib.use("Agg")
@@ -103,6 +103,14 @@ def _build_pdf(data, output):
         return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
     def add(text, style=body):
         story.append(p(text, style))
+    def add_link(url, prefix="", suffix=""):
+        value = str(url or "")
+        label = escape(prefix + value).replace("\n", "<br/>")
+        if value.startswith(("https://", "http://")):
+            # Each wrapped line keeps the full URI instead of relying on the
+            # PDF viewer to guess a link from the printed text.
+            label = f'<link href={quoteattr(value)} color="#125b86"><u>{label}</u></link>'
+        story.append(Paragraph(label + escape(suffix).replace("\n", "<br/>"), small))
     def bullet(items):
         for text in items:
             add("• " + text)
@@ -273,7 +281,7 @@ def _build_pdf(data, output):
     if research.get("references"):
         for ref in research["references"]:
             add(f"[{ref['id']}] {ref['title']} | {ref['published_at']} | {ref['status']}", small)
-            add(ref["url"], small)
+            add_link(ref["url"], prefix="Mở nguồn: ")
     else:
         add("Không chọn được bài báo phù hợp. Các chỉ tiêu tài chính và giá có nguồn lưu trữ riêng.", small)
     add("Nguồn dữ liệu gốc và dấu vết thu thập", h2)
@@ -281,9 +289,9 @@ def _build_pdf(data, output):
         if s.get("file") == "valuations.json":
             continue  # Historical valuation scenario files stay on disk, not in report
         add(s.get("source", s["file"]) + "  |  " + s["file"], small)
-        add(s.get("source_url", "") + "  |  Kỳ: " + str(s.get("as_of", "ghi theo dòng")), small)
+        add_link(s.get("source_url", ""), suffix="  |  Kỳ: " + str(s.get("as_of", "ghi theo dòng")))
     if data["macro"]:
-        add("Vĩ mô: " + data["macro"][0]["source_url"], small)
+        add_link(data["macro"][0]["source_url"], prefix="Vĩ mô: ")
     add("Dấu kiểm tra SHA-256 và ngày thu thập nằm trong manifest.json đi cùng bộ dữ liệu. Tái lập bằng cùng bộ dữ liệu, cấu hình và phiên bản source; không gọi API trong lúc lập báo cáo.", small)
 
     if review:
@@ -297,7 +305,7 @@ def _build_pdf(data, output):
         add("Nguồn đối chiếu",h1)
         for source in review["sources"]:
             add(source["id"]+" / "+source["title"],h2)
-            add(source["url"],small)
+            add_link(source["url"])
         add("ROE sử dụng LNST hợp nhất gồm lợi ích không kiểm soát và tổng VCSH cùng phạm vi. Đơn vị gốc BCTN là triệu VND; chia 1.000 để trình bày tỷ VND. Không đồng nhất ROE này với mọi cách tính bình quân của bên cung cấp.",body)
         add("Bộ dữ liệu nộp được giữ cố định và có SHA-256. Phân tích và xuất PDF chạy offline sau khi cài thư viện. Nhận định đã rà soát tự ngừng áp dụng khi các đầu vào liên quan thay đổi.",body)
 
